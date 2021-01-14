@@ -186,7 +186,7 @@ fn tokens_to_terms<'a>(tokens: Vec<Token<'a>>, escape: bool) -> impl Iterator<It
         })
 }
 
-fn parse_play_line<'a>(line: Vec<Token<'a>>) -> Vec<LineTerm<'a>> {
+fn parse_dialogues<'a>(line: Vec<Token<'a>>) -> Vec<LineTerm<'a>> {
     let mut terms = Vec::new();
 
     if line.len() <= 1 {
@@ -248,14 +248,14 @@ fn parse_play_line<'a>(line: Vec<Token<'a>>) -> Vec<LineTerm<'a>> {
 }
 
 
-struct PlayLines<'a, I>
+struct Dialogues<'a, I>
 where
     I: Iterator<Item=Token<'a>>,
 {
     iter: Lookahead<I>,
 }
 
-impl<'a, I> PlayLines<'a, I>
+impl<'a, I> Dialogues<'a, I>
 where
     I: Iterator<Item=Token<'a>>,
 {
@@ -270,7 +270,7 @@ where
     }
 }
 
-impl<'a, I> Iterator for PlayLines<'a, I>
+impl<'a, I> Iterator for Dialogues<'a, I>
 where
     I: Iterator<Item=Token<'a>>,
 {
@@ -619,7 +619,7 @@ mod test {
     }
 
     #[test]
-    fn play_line() {
+    fn dialogues() {
         let s = r#"A> Hello!
 (Turning to audience)
 B> Bye!
@@ -627,7 +627,7 @@ A> What? (__Turning (x)__)"#;
         let mut parser = Parser::new(s);
         assert_eq!(parser.next(), Some(Event::Start(Tag::Paragraph)));
         let mut parser = EventTokener::new(parser);
-        let mut lines = PlayLines::new(&mut parser);
+        let mut lines = Dialogues::new(&mut parser);
         assert_eq!(lines.next(), Some(vec![
             Token::Text(TextToken::Text("A".to_owned())),
             Token::Text(TextToken::Rangle),
@@ -656,18 +656,36 @@ A> What? (__Turning (x)__)"#;
         ]));
     }
 
-    fn make_play_lines<'a>(s: &'a str) -> PlayLines<'a, EventTokener<'a, Parser<'a>>> {
+    #[test]
+    fn end_of_dialogues() {
+        let s = "Simple Line";
+        let mut dialogues = make_dialogues(s);
+        assert_eq!(dialogues.next(), Some(vec![
+                Token::Text(TextToken::Text("Simple Line".to_owned())),
+        ]));
+    }
+
+    #[test]
+    fn end_of_line_terms() {
+        let s = "Simple Line";
+        let mut diag = make_dialogues(s);
+        let terms = parse_dialogues(diag.next().unwrap());
+        assert_eq!(terms, vec![LineTerm::Text("Simple Line".to_owned())]);
+        assert_eq!(diag.next(), Some(vec![Token::Event(Event::End(Tag::Paragraph))]));
+    }
+
+    fn make_dialogues<'a>(s: &'a str) -> Dialogues<'a, EventTokener<'a, Parser<'a>>> {
         let mut parser = Parser::new(s);
         assert_eq!(parser.next(), Some(Event::Start(Tag::Paragraph)));
         let parser = EventTokener::new(parser);
-        PlayLines::new(parser)
+        Dialogues::new(parser)
     }
 
     #[test]
     fn one_line_term() {
         let s = "Hello!";
-        let mut lines = make_play_lines(s);
-        let terms = parse_play_line(lines.next().unwrap());
+        let mut lines = make_dialogues(s);
+        let terms = parse_dialogues(lines.next().unwrap());
         assert_eq!(terms, vec![
             LineTerm::Text("Hello!".to_owned()),
         ]);
@@ -676,8 +694,8 @@ A> What? (__Turning (x)__)"#;
     #[test]
     fn only_role_name() {
         let s = "Young Syrian>";
-        let mut lines = make_play_lines(s);
-        let terms = parse_play_line(lines.next().unwrap());
+        let mut lines = make_dialogues(s);
+        let terms = parse_dialogues(lines.next().unwrap());
         assert_eq!(terms, vec![
             LineTerm::Role("Young Syrian".to_owned()),
         ]);
@@ -686,8 +704,8 @@ A> What? (__Turning (x)__)"#;
     #[test]
     fn with_direction() {
         let s = "A> (Running) Hello!";
-        let mut lines = make_play_lines(s);
-        let terms = parse_play_line(lines.next().unwrap());
+        let mut lines = make_dialogues(s);
+        let terms = parse_dialogues(lines.next().unwrap());
         assert_eq!(terms, vec![
             LineTerm::Role("A".to_owned()),
             LineTerm::Text(" ".to_owned()),
@@ -701,8 +719,8 @@ A> What? (__Turning (x)__)"#;
     #[test]
     fn with_code_in_direction() {
         let s = "A> (Writing `x`) What?";
-        let mut lines = make_play_lines(s);
-        let terms = parse_play_line(lines.next().unwrap());
+        let mut lines = make_dialogues(s);
+        let terms = parse_dialogues(lines.next().unwrap());
         assert_eq!(terms, vec![
             LineTerm::Role("A".to_owned()),
             LineTerm::Text(" ".to_owned()),
@@ -717,8 +735,8 @@ A> What? (__Turning (x)__)"#;
     #[test]
     fn with_em_in_direction() {
         let s = "A> (Writing *x*) What?";
-        let mut lines = make_play_lines(s);
-        let terms = parse_play_line(lines.next().unwrap());
+        let mut lines = make_dialogues(s);
+        let terms = parse_dialogues(lines.next().unwrap());
         assert_eq!(terms, vec![
             LineTerm::Role("A".to_owned()),
             LineTerm::Text(" ".to_owned()),
@@ -733,10 +751,10 @@ A> What? (__Turning (x)__)"#;
     }
 
     #[test]
-    fn distilled_play_line_only_role() {
+    fn distilled_dialogues_only_role() {
         let s = "Young Syrian>";
-        let mut lines = make_play_lines(s);
-        let terms = parse_play_line(lines.next().unwrap());
+        let mut lines = make_dialogues(s);
+        let terms = parse_dialogues(lines.next().unwrap());
         let events = distil(terms);
         assert_eq!(events, vec![
             Event::Html(r#"<span class="role">Young Syrian</span>"#.into()),
@@ -744,13 +762,13 @@ A> What? (__Turning (x)__)"#;
     }
 
     #[test]
-    fn multiple_play_lines() {
+    fn multiple_dialogues() {
         let s = r#"A> Hello!
 ( Turning to audience )
 B> Bye!
 A> What? (__Turning (x)__)  "#;
-        let mut lines = make_play_lines(s);
-        let events = distil(parse_play_line(lines.next().unwrap()));
+        let mut lines = make_dialogues(s);
+        let events = distil(parse_dialogues(lines.next().unwrap()));
         assert_eq!(events, vec![
             Event::Html(r#"<span class="role">A</span>"#.into()),
             Event::Text("Hello!".into()),
@@ -760,13 +778,13 @@ A> What? (__Turning (x)__)  "#;
             Event::Html("</span>".into()),
             Event::SoftBreak,
         ]);
-        let events = distil(parse_play_line(lines.next().unwrap()));
+        let events = distil(parse_dialogues(lines.next().unwrap()));
         assert_eq!(events, vec![
             Event::Html(r#"<span class="role">B</span>"#.into()),
             Event::Text("Bye!".into()),
             Event::SoftBreak,
         ]);
-        let events = distil(parse_play_line(lines.next().unwrap()));
+        let events = distil(parse_dialogues(lines.next().unwrap()));
         assert_eq!(events, vec![
             Event::Html(r#"<span class="role">A</span>"#.into()),
             Event::Text("What?".into()),
