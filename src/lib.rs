@@ -5,9 +5,6 @@ use pulldown_cmark::escape::{StrWrite, escape_html, escape_href};
 use pulldown_cmark::html::push_html;
 use trim_in_place::TrimInPlace;
 
-mod lookahead;
-use crate::lookahead::Lookahead;
-
 pub struct PlayMd<'a, P> {
     parser: P,
     is_in_paragraph: bool,
@@ -252,7 +249,8 @@ struct Dialogues<'a, I>
 where
     I: Iterator<Item=Token<'a>>,
 {
-    iter: Lookahead<I>,
+    iter: I,
+    cache: Vec<Token<'a>>,
 }
 
 impl<'a, I> Dialogues<'a, I>
@@ -261,12 +259,21 @@ where
 {
     fn new(iter: I) -> Self {
         Self {
-            iter: Lookahead::new(iter, 2),
+            iter: iter,
+            cache: Vec::new(),
         }
     }
 
     fn into_inner(self) -> I {
-        self.iter.into_inner()
+        self.iter
+    }
+}
+
+fn vec_to_option_if_empty<T>(vec: Vec<T>) -> Option<Vec<T>> {
+    if vec.is_empty() {
+        None
+    } else {
+        Some(vec)
     }
 }
 
@@ -278,30 +285,50 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         let mut line = Vec::new();
+        line.append(&mut self.cache);
 
-        loop {
-            let token = self.iter.next();
-            let breakable = match (token.as_ref(), self.iter.ahead(0), self.iter.ahead(1)) {
-                (Some(&Token::Event(Event::SoftBreak)), Some(&Token::Text(TextToken::Text(_))), Some(&Token::Text(TextToken::Rangle))) => true,
-                (_, Some(&Token::Event(Event::End(Tag::Paragraph))), _) => true,
-                (None, _, _) => true,
-                _ => false,
-            };
+        while let Some(token) = self.iter.next() {
+            match token {
+                Token::Event(Event::End(Tag::Paragraph)) => return vec_to_option_if_empty(line),
+                rangle @ Token::Text(TextToken::Rangle) => {
+                    let text = match line.pop() {
+                        Some(Token::Text(TextToken::Text(text))) => text,
+                        Some(token) => {
+                            line.push(token);
+                            continue;
+                        },
+                        None => continue,
+                    };
 
-            if let Some(token) = token {
-                line.push(token);
-            }
+                    let is_first = match line.pop() {
+                        None => true,
+                        Some(sb @ Token::Event(Event::SoftBreak)) => {
+                            line.push(sb);
+                            false
+                        },
+                        Some(token) => {
+                            line.push(Token::Text(TextToken::Text(text)));
+                            line.push(token);
+                            continue;
+                        },
+                    };
 
-            if breakable {
-                break;
+                    if is_first {
+                        line.push(Token::Text(TextToken::Text(text)));
+                        line.push(rangle);
+                    } else {
+                        self.cache.push(Token::Text(TextToken::Text(text)));
+                        self.cache.push(rangle);
+                        return vec_to_option_if_empty(line);
+                    }
+                },
+                t => {
+                    line.push(t);
+                },
             }
         }
 
-        if line.len() == 0 {
-            None
-        } else {
-            Some(line)
-        }
+        vec_to_option_if_empty(line)
     }
 }
 
@@ -671,7 +698,7 @@ A> What? (__Turning (x)__)"#;
         let mut diag = make_dialogues(s);
         let terms = parse_dialogues(diag.next().unwrap());
         assert_eq!(terms, vec![LineTerm::Text("Simple Line".to_owned())]);
-        assert_eq!(diag.next(), Some(vec![Token::Event(Event::End(Tag::Paragraph))]));
+        assert_eq!(diag.next(), None);
     }
 
     fn make_dialogues<'a>(s: &'a str) -> Dialogues<'a, EventTokener<'a, Parser<'a>>> {
@@ -692,8 +719,15 @@ A> What? (__Turning (x)__)"#;
     }
 
     #[test]
-    fn only_role_name() {
+    fn dialogue_with_only_character_name() {
         let s = "Young Syrian>";
+
+        let mut lines = make_dialogues(s);
+        assert_eq!(lines.next(), Some(vec![
+                Token::Text(TextToken::Text("Young Syrian".to_owned())),
+                Token::Text(TextToken::Rangle),
+        ]));
+
         let mut lines = make_dialogues(s);
         let terms = parse_dialogues(lines.next().unwrap());
         assert_eq!(terms, vec![
@@ -797,7 +831,6 @@ A> What? (__Turning (x)__)  "#;
 
         let parser = lines.into_inner();
         let mut parser = parser.into_inner();
-        // `End(Paragraph)` is consumed.
         assert_eq!(parser.next(), None);
     }
 }
