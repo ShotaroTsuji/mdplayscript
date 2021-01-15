@@ -1,8 +1,7 @@
 use std::marker::PhantomData;
 use std::collections::VecDeque;
 use pulldown_cmark::{Event, Tag};
-use pulldown_cmark::escape::{StrWrite, escape_html, escape_href};
-use pulldown_cmark::html::push_html;
+use pulldown_cmark::escape::escape_html;
 use trim_in_place::TrimInPlace;
 
 pub struct MdPlay<'a, P, F> {
@@ -57,7 +56,7 @@ where
                 }
                 let tokener = dialogues.into_inner();
                 let parser = tokener.into_inner();
-                std::mem::replace(&mut self.parser, parser);
+                let _ = std::mem::replace(&mut self.parser, parser);
 
                 self.queue.pop_front()
             },
@@ -81,7 +80,7 @@ fn distil<'a>(terms: Vec<Term<'a>>) -> Vec<Event<'a>> {
         match term {
             Term::Role(role) => {
                 let mut buf = "<span class=\"role\">".to_owned();
-                escape_html(&mut buf, role.as_str());
+                escape_html(&mut buf, role.as_str()).unwrap();
                 buf += "</span>";
                 trim_start = true;
 
@@ -504,48 +503,6 @@ fn find_one_of(s: &str, ps: &str) -> Option<(usize, char)> {
     None
 }
 
-
-#[derive(Debug,Clone,PartialEq)]
-enum FindPuncts<'a> {
-    Found(&'a str, &'a str, &'a str),
-    NotFound(&'a str),
-}
-
-impl<'a> FindPuncts<'a> {
-    fn position(&self) -> Option<usize> {
-        match self {
-            FindPuncts::Found(before, _, _) => Some(before.len()),
-            FindPuncts::NotFound(_) => None,
-        }
-    }
-}
-
-fn find_puncts(s: &str, p: char) -> FindPuncts {
-    match find_puncts_begin(s, p) {
-        PunctsBegin::Found(before, after) => {
-            let (puncts, after) = find_puncts_end(after, p);
-            FindPuncts::Found(before, puncts, after)
-        },
-        PunctsBegin::NotFound(s) => FindPuncts::NotFound(s),
-    }
-}
-
-#[derive(Debug,Clone,PartialEq)]
-enum PunctsBegin<'a> {
-    Found(&'a str, &'a str),
-    NotFound(&'a str),
-}
-
-fn find_puncts_begin(s: &str, p: char) -> PunctsBegin {
-    for (index, c) in s.char_indices() {
-        if c == p {
-            return PunctsBegin::Found(&s[..index], &s[index..]);
-        }
-    }
-
-    PunctsBegin::NotFound(s)
-}
-
 fn find_puncts_end(s: &str, p: char) -> (&str, &str) {
     assert!(s.starts_with(p));
 
@@ -564,19 +521,6 @@ mod test {
     use super::*;
 
     #[test]
-    fn puncts_begin() {
-        let p = '>';
-        let s = "AAA> BBB";
-        assert_eq!(find_puncts_begin(s, p), PunctsBegin::Found("AAA", "> BBB"));
-        let s = "xxx>>> xxx";
-        assert_eq!(find_puncts_begin(s, p), PunctsBegin::Found("xxx", ">>> xxx"));
-        let s = "Hello";
-        assert_eq!(find_puncts_begin(s, p), PunctsBegin::NotFound(s));
-        let s = "First> Second>>";
-        assert_eq!(find_puncts_begin(s, p), PunctsBegin::Found("First", "> Second>>"));
-    }
-
-    #[test]
     fn puncts_end() {
         let p = '>';
         let s = "> BBB";
@@ -587,24 +531,6 @@ mod test {
         assert_eq!(find_puncts_end(s, p), (">", " Second>>"));
         let s = ">>>>";
         assert_eq!(find_puncts_end(s, p), (s, ""));
-    }
-
-    #[test]
-    fn puncts() {
-        let p = '>';
-        let s = "Hérode> Qu'est-ce que cela veut dire? Le Sauveur du monde?";
-        assert_eq!(find_puncts(s, p), FindPuncts::Found("Hérode", ">", &s[8..]));
-        let s = "It holds: A >> B.";
-        assert_eq!(find_puncts(s, p), FindPuncts::Found("It holds: A ", ">>", " B."));
-        let s = "Without angles.";
-        assert_eq!(find_puncts(s, p), FindPuncts::NotFound(s));
-        let s = "First> Second>>";
-        assert_eq!(find_puncts(s, p), FindPuncts::Found("First", ">", " Second>>"));
-        let p = '(';
-        let s = "Text (direction)";
-        assert_eq!(find_puncts(s, p), FindPuncts::Found("Text ", "(", "direction)"));
-        let s = "Text ((paren))";
-        assert_eq!(find_puncts(s, p), FindPuncts::Found("Text ", "((", "paren))"));
     }
 
     #[test]
@@ -862,6 +788,7 @@ Independent Paragraph"#;
         assert_eq!(parser.next(), Some(Event::Start(Tag::Paragraph)));
     }
 
+    #[test]
     fn multiple_paragraphs_dialogues_end() {
         let s = r#"A> Hello!
 B> Hello!
