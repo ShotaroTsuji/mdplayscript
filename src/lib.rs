@@ -5,103 +5,75 @@ use pulldown_cmark::escape::{StrWrite, escape_html, escape_href};
 use pulldown_cmark::html::push_html;
 use trim_in_place::TrimInPlace;
 
-pub struct PlayMd<'a, P> {
+pub struct MdPlay<'a, P, F> {
     parser: P,
-    is_in_paragraph: bool,
-    previous: Option<Event<'a>>,
+    dummy: F,
+    queue: VecDeque<Event<'a>>,
     _marker: PhantomData<&'a P>,
 }
 
-impl<'a, P> PlayMd<'a, P>
+impl<'a, P, F> MdPlay<'a, P, F>
 where
     P: Iterator<Item=Event<'a>>,
+    F: FnMut() -> P,
 {
-    pub fn new(parser: P) -> Self {
-        PlayMd {
+    pub fn new(parser: P, dummy: F) -> Self {
+        Self {
             parser: parser,
-            is_in_paragraph: false,
-            previous: None,
+            dummy: dummy,
+            queue: VecDeque::new(),
             _marker: PhantomData,
         }
     }
 }
 
-impl<'a, P> Iterator for PlayMd<'a, P>
+impl<'a, P, F> Iterator for MdPlay<'a, P, F>
 where
     P: Iterator<Item=Event<'a>>,
+    F: FnMut() -> P,
 {
-    type Item=Event<'a>;
+    type Item = Event<'a>;
 
-    fn next(&mut self) -> Option<Self::Item> {
-        if let Some(event) = self.parser.next() {
-            let ret = match event.clone() {
-                Event::Start(Tag::Paragraph) => {
-                    self.is_in_paragraph = true;
+    fn next<'s>(&'s mut self) -> Option<Event<'a>> {
+        println!("* queue.len() = {}", self.queue.len());
+        if let Some(event) = self.queue.pop_front() {
+            return Some(event);
+        }
 
-                    Event::Start(Tag::Paragraph)
-                },
-                Event::End(Tag::Paragraph) => {
-                    self.is_in_paragraph = false;
-                    eprint!("! ");
-
-                    Event::End(Tag::Paragraph)
-                },
-                Event::Text(text) if self.is_in_paragraph => {
-                    match split_name(&text) {
-                        (Some(role), line) => {
-                            eprintln!("  PREV: {:?}", self.previous);
-                            eprintln!("  ROLE: {}", role);
-
-                            let mut buf = String::new();
-
-                            match self.previous {
-                                Some(Event::Start(Tag::Paragraph)) => {},
-                                Some(Event::SoftBreak) => {
-                                    writeln!(buf, "</p>").unwrap();
-                                    write!(buf, "<p>").unwrap();
-                                },
-                                _ => unreachable!(),
-                            }
-
-                            write!(buf, "<span class=\"role\">").unwrap();
-                            escape_html(&mut buf, role).unwrap();
-                            write!(buf, "</span>").unwrap();
-                            escape_html(&mut buf, line).unwrap();
-
-                            Event::Html(buf.into())
-                        },
-                        (None, line) => {
-                            Event::Text(line.to_owned().into())
-                        },
+        let event = self.parser.next();
+        println!("* {:?}", event);
+        match event {
+            Some(Event::Start(Tag::Paragraph)) => {
+                let parser = std::mem::replace(&mut self.parser, (self.dummy)());
+                let tokener = EventTokener::new(parser);
+                let mut dialogues = Dialogues::new(tokener);
+                while let Some(diag) = dialogues.next() {
+                    println!("{:#?}", diag);
+                    let events = distil(parse_dialogues(diag));
+                    for e in events.into_iter() {
+                        println!("  Events in dialogue: {:?}", e);
+                        self.queue.push_back(e);
                     }
-                },
-                e => e,
-            };
+                }
+                let tokener = dialogues.into_inner();
+                let parser = tokener.into_inner();
+                std::mem::replace(&mut self.parser, parser);
 
-            if self.is_in_paragraph {
-                eprint!("* ");
-            }
-
-            eprintln!("{:?}", event);
-
-            self.previous.replace(event);
-
-            Some(ret)
-        } else {
-            None
+                self.queue.pop_front()
+            },
+            Some(event) => Some(event),
+            None => None,
         }
     }
 }
 
-fn split_name(s: &str) -> (Option<&str>, &str) {
-    match s.find(':') {
-        Some(pos) => (Some(&s[..pos]), s[pos+1..].trim()),
-        None => (None, s),
-    }
-}
 
 fn distil<'a>(terms: Vec<Term<'a>>) -> Vec<Event<'a>> {
-    let mut events = Vec::new();
+    if terms.len() == 0 {
+        return vec![];
+    }
+
+    let mut events = vec![Event::Start(Tag::Paragraph)];
 
     let mut trim_start = false;
 
@@ -162,6 +134,8 @@ fn distil<'a>(terms: Vec<Term<'a>>) -> Vec<Event<'a>> {
             },
         }
     }
+
+    events.push(Event::End(Tag::Paragraph));
 
     events
 }
@@ -258,6 +232,7 @@ fn line_starts_with_dialogue<'a>(line: &[Token<'a>]) -> bool {
 }
 
 fn parse_dialogues<'a>(line: Vec<Token<'a>>) -> Vec<Term<'a>> {
+    println!("parse_dialogues: {:?}", line);
     if line_starts_with_dialogue(&line) {
         parse_dialogue_line(line)
     } else {
@@ -271,6 +246,7 @@ where
     I: Iterator<Item=Token<'a>>,
 {
     iter: I,
+    fused: bool,
     cache: Vec<Token<'a>>,
 }
 
@@ -281,6 +257,7 @@ where
     fn new(iter: I) -> Self {
         Self {
             iter: iter,
+            fused: false,
             cache: Vec::new(),
         }
     }
@@ -305,12 +282,20 @@ where
     type Item = Vec<Token<'a>>;
 
     fn next(&mut self) -> Option<Self::Item> {
+        if self.fused {
+            return None;
+        }
+
         let mut line = Vec::new();
         line.append(&mut self.cache);
 
         while let Some(token) = self.iter.next() {
+            println!("{:?}", token);
             match token {
-                Token::Event(Event::End(Tag::Paragraph)) => return vec_to_option_if_empty(line),
+                Token::Event(Event::End(Tag::Paragraph)) => {
+                    self.fused = true;
+                    return vec_to_option_if_empty(line);
+                },
                 rangle @ Token::Text(TextToken::Rangle) => {
                     let text = match line.pop() {
                         Some(Token::Text(TextToken::Text(text))) => text,
@@ -812,7 +797,9 @@ A> What? (__Turning (x)__)"#;
         let terms = parse_dialogues(lines.next().unwrap());
         let events = distil(terms);
         assert_eq!(events, vec![
+            Event::Start(Tag::Paragraph),
             Event::Html(r#"<span class="role">Young Syrian</span>"#.into()),
+            Event::End(Tag::Paragraph),
         ]);
     }
 
@@ -825,6 +812,7 @@ A> What? (__Turning (x)__)  "#;
         let mut lines = make_dialogues(s);
         let events = distil(parse_dialogues(lines.next().unwrap()));
         assert_eq!(events, vec![
+            Event::Start(Tag::Paragraph),
             Event::Html(r#"<span class="role">A</span>"#.into()),
             Event::Text("Hello!".into()),
             Event::SoftBreak,
@@ -832,15 +820,19 @@ A> What? (__Turning (x)__)  "#;
             Event::Text("Turning to audience".into()),
             Event::Html("</span>".into()),
             Event::SoftBreak,
+            Event::End(Tag::Paragraph),
         ]);
         let events = distil(parse_dialogues(lines.next().unwrap()));
         assert_eq!(events, vec![
+            Event::Start(Tag::Paragraph),
             Event::Html(r#"<span class="role">B</span>"#.into()),
             Event::Text("Bye!".into()),
             Event::SoftBreak,
+            Event::End(Tag::Paragraph),
         ]);
         let events = distil(parse_dialogues(lines.next().unwrap()));
         assert_eq!(events, vec![
+            Event::Start(Tag::Paragraph),
             Event::Html(r#"<span class="role">A</span>"#.into()),
             Event::Text("What?".into()),
             Event::Html(r#"<span class="direction">"#.into()),
@@ -848,10 +840,36 @@ A> What? (__Turning (x)__)  "#;
             Event::Text("Turning (x)".into()),
             Event::End(Tag::Strong),
             Event::Html("</span>".into()),
+            Event::End(Tag::Paragraph),
         ]);
 
         let parser = lines.into_inner();
         let mut parser = parser.into_inner();
         assert_eq!(parser.next(), None);
+    }
+
+    #[test]
+    fn parse_multiple_paragraphs() {
+        let s = r#"A> Hello!
+B> Hello!
+
+Independent Paragraph"#;
+        let mut lines = make_dialogues(s);
+        let _a_hello = distil(parse_dialogues(lines.next().unwrap()));
+        let _b_hello = distil(parse_dialogues(lines.next().unwrap()));
+        let parser = lines.into_inner();
+        let mut parser = parser.into_inner();
+        assert_eq!(parser.next(), Some(Event::Start(Tag::Paragraph)));
+    }
+
+    fn multiple_paragraphs_dialogues_end() {
+        let s = r#"A> Hello!
+B> Hello!
+
+Independent Paragraph"#;
+        let mut lines = make_dialogues(s);
+        let _a_hello = distil(parse_dialogues(lines.next().unwrap()));
+        let _b_hello = distil(parse_dialogues(lines.next().unwrap()));
+        assert_eq!(lines.next(), None);
     }
 }

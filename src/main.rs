@@ -1,4 +1,4 @@
-use playmd::PlayMd;
+use playmd::MdPlay;
 use pulldown_cmark::Parser;
 
 const SAMPLE: &'static str = r#"
@@ -51,6 +51,7 @@ Text in `div` element.
 </div>
 "#;
 
+/*
 fn convert_original(s: &str) {
     println!("{}", s);
     let mut buf = String::new();
@@ -67,10 +68,17 @@ fn convert_to_html(s: &str) {
     pulldown_cmark::html::push_html(&mut buf, parser);
     println!("{}", buf);
 }
+*/
 
 fn main() -> eyre::Result<()> {
     let parser = Parser::new(&SAMPLE);
-    let parser = PlayMd::new(parser);
+    for event in parser.take(20) {
+        println!("{:?}", event);
+    }
+    println!("--");
+
+    let parser = Parser::new(&SAMPLE);
+    let parser = MdPlay::new(parser, || Parser::new(""));
 
     let mut buf = String::new();
     pulldown_cmark::html::push_html(&mut buf, parser);
