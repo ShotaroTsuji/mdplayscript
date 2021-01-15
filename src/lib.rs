@@ -100,14 +100,14 @@ fn split_name(s: &str) -> (Option<&str>, &str) {
     }
 }
 
-fn distil<'a>(terms: Vec<LineTerm<'a>>) -> Vec<Event<'a>> {
+fn distil<'a>(terms: Vec<Term<'a>>) -> Vec<Event<'a>> {
     let mut events = Vec::new();
 
     let mut trim_start = false;
 
     for term in terms.into_iter() {
         match term {
-            LineTerm::Role(role) => {
+            Term::Role(role) => {
                 let mut buf = "<span class=\"role\">".to_owned();
                 escape_html(&mut buf, role.as_str());
                 buf += "</span>";
@@ -115,7 +115,7 @@ fn distil<'a>(terms: Vec<LineTerm<'a>>) -> Vec<Event<'a>> {
 
                 events.push(Event::Html(buf.into()));
             },
-            LineTerm::Text(mut text) => {
+            Term::Text(mut text) => {
                 if trim_start {
                     TrimInPlace::trim_start_in_place(&mut text);
                 }
@@ -124,7 +124,7 @@ fn distil<'a>(terms: Vec<LineTerm<'a>>) -> Vec<Event<'a>> {
                     events.push(Event::Text(text.into()));
                 }
             },
-            LineTerm::DirectionStart => {
+            Term::DirectionStart => {
                 match events.pop() {
                     Some(Event::Text(text)) => {
                         let mut text = text.into_string();
@@ -140,7 +140,7 @@ fn distil<'a>(terms: Vec<LineTerm<'a>>) -> Vec<Event<'a>> {
                 trim_start = true;
                 events.push(Event::Html("<span class=\"direction\">".into()));
             },
-            LineTerm::DirectionEnd => {
+            Term::DirectionEnd => {
                 match events.pop() {
                     Some(Event::Text(text)) => {
                         let mut text = text.into_string();
@@ -156,7 +156,7 @@ fn distil<'a>(terms: Vec<LineTerm<'a>>) -> Vec<Event<'a>> {
                 trim_start = true;
                 events.push(Event::Html("</span>".into()));
             },
-            LineTerm::Event(e) => {
+            Term::Event(e) => {
                 trim_start = false;
                 events.push(e);
             },
@@ -167,7 +167,7 @@ fn distil<'a>(terms: Vec<LineTerm<'a>>) -> Vec<Event<'a>> {
 }
 
 #[derive(Debug,Clone,PartialEq)]
-enum LineTerm<'a> {
+enum Term<'a> {
     DirectionStart,
     DirectionEnd,
     Role(String),
@@ -175,15 +175,15 @@ enum LineTerm<'a> {
     Event(Event<'a>),
 }
 
-fn tokens_to_terms<'a>(tokens: Vec<Token<'a>>, escape: bool) -> impl Iterator<Item=LineTerm<'a>> {
+fn tokens_to_terms<'a>(tokens: Vec<Token<'a>>, escape: bool) -> impl Iterator<Item=Term<'a>> {
     tokens.into_iter()
         .map(move |t| match t {
-            Token::Event(e) => LineTerm::Event(e),
-            Token::Text(tt) => LineTerm::Text(tt.into_string(escape)),
+            Token::Event(e) => Term::Event(e),
+            Token::Text(tt) => Term::Text(tt.into_string(escape)),
         })
 }
 
-fn parse_dialogues<'a>(line: Vec<Token<'a>>) -> Vec<LineTerm<'a>> {
+fn parse_dialogues<'a>(line: Vec<Token<'a>>) -> Vec<Term<'a>> {
     let mut terms = Vec::new();
 
     if line.len() <= 1 {
@@ -192,7 +192,7 @@ fn parse_dialogues<'a>(line: Vec<Token<'a>>) -> Vec<LineTerm<'a>> {
 
     match (&line[0], &line[1]) {
         (Token::Text(TextToken::Text(name)), Token::Text(TextToken::Rangle)) => {
-            terms.push(LineTerm::Role(name.clone()));
+            terms.push(Term::Role(name.clone()));
         },
         _ => {
             return tokens_to_terms(line, false).collect();
@@ -203,7 +203,7 @@ fn parse_dialogues<'a>(line: Vec<Token<'a>>) -> Vec<LineTerm<'a>> {
     while i < line.len() {
         match &line[i] {
             Token::Event(e) => {
-                terms.push(LineTerm::Event(e.clone()));
+                terms.push(Term::Event(e.clone()));
             },
             Token::Text(TextToken::Left) => {
                 let mut j = i;
@@ -220,21 +220,21 @@ fn parse_dialogues<'a>(line: Vec<Token<'a>>) -> Vec<LineTerm<'a>> {
                 }
 
                 if let Some(right_pos) = right_pos {
-                    terms.push(LineTerm::DirectionStart);
+                    terms.push(Term::DirectionStart);
 
                     tokens_to_terms(line[i+1..j].to_vec(), true)
                         .for_each(|t| { terms.push(t); });
 
-                    terms.push(LineTerm::DirectionEnd);
+                    terms.push(Term::DirectionEnd);
 
                     i = right_pos + 1;
                     continue;
                 } else {
-                    terms.push(LineTerm::Text("(".to_owned()));
+                    terms.push(Term::Text("(".to_owned()));
                 }
             },
             Token::Text(t) => {
-                terms.push(LineTerm::Text(t.clone().into_string(true)));
+                terms.push(Term::Text(t.clone().into_string(true)));
             },
         }
 
@@ -693,11 +693,11 @@ A> What? (__Turning (x)__)"#;
     }
 
     #[test]
-    fn end_of_line_terms() {
+    fn end_of_terms() {
         let s = "Simple Line";
         let mut diag = make_dialogues(s);
         let terms = parse_dialogues(diag.next().unwrap());
-        assert_eq!(terms, vec![LineTerm::Text("Simple Line".to_owned())]);
+        assert_eq!(terms, vec![Term::Text("Simple Line".to_owned())]);
         assert_eq!(diag.next(), None);
     }
 
@@ -709,12 +709,12 @@ A> What? (__Turning (x)__)"#;
     }
 
     #[test]
-    fn one_line_term() {
+    fn one_term() {
         let s = "Hello!";
         let mut lines = make_dialogues(s);
         let terms = parse_dialogues(lines.next().unwrap());
         assert_eq!(terms, vec![
-            LineTerm::Text("Hello!".to_owned()),
+            Term::Text("Hello!".to_owned()),
         ]);
     }
 
@@ -731,7 +731,7 @@ A> What? (__Turning (x)__)"#;
         let mut lines = make_dialogues(s);
         let terms = parse_dialogues(lines.next().unwrap());
         assert_eq!(terms, vec![
-            LineTerm::Role("Young Syrian".to_owned()),
+            Term::Role("Young Syrian".to_owned()),
         ]);
     }
 
@@ -741,12 +741,12 @@ A> What? (__Turning (x)__)"#;
         let mut lines = make_dialogues(s);
         let terms = parse_dialogues(lines.next().unwrap());
         assert_eq!(terms, vec![
-            LineTerm::Role("A".to_owned()),
-            LineTerm::Text(" ".to_owned()),
-            LineTerm::DirectionStart,
-            LineTerm::Text("Running".to_owned()),
-            LineTerm::DirectionEnd,
-            LineTerm::Text(" Hello!".to_owned()),
+            Term::Role("A".to_owned()),
+            Term::Text(" ".to_owned()),
+            Term::DirectionStart,
+            Term::Text("Running".to_owned()),
+            Term::DirectionEnd,
+            Term::Text(" Hello!".to_owned()),
         ]);
     }
 
@@ -756,13 +756,13 @@ A> What? (__Turning (x)__)"#;
         let mut lines = make_dialogues(s);
         let terms = parse_dialogues(lines.next().unwrap());
         assert_eq!(terms, vec![
-            LineTerm::Role("A".to_owned()),
-            LineTerm::Text(" ".to_owned()),
-            LineTerm::DirectionStart,
-            LineTerm::Text("Writing ".to_owned()),
-            LineTerm::Event(Event::Code("x".into())),
-            LineTerm::DirectionEnd,
-            LineTerm::Text(" What?".to_owned()),
+            Term::Role("A".to_owned()),
+            Term::Text(" ".to_owned()),
+            Term::DirectionStart,
+            Term::Text("Writing ".to_owned()),
+            Term::Event(Event::Code("x".into())),
+            Term::DirectionEnd,
+            Term::Text(" What?".to_owned()),
         ]);
     }
 
@@ -772,15 +772,15 @@ A> What? (__Turning (x)__)"#;
         let mut lines = make_dialogues(s);
         let terms = parse_dialogues(lines.next().unwrap());
         assert_eq!(terms, vec![
-            LineTerm::Role("A".to_owned()),
-            LineTerm::Text(" ".to_owned()),
-            LineTerm::DirectionStart,
-            LineTerm::Text("Writing ".to_owned()),
-            LineTerm::Event(Event::Start(Tag::Emphasis)),
-            LineTerm::Event(Event::Text("x".into())),
-            LineTerm::Event(Event::End(Tag::Emphasis)),
-            LineTerm::DirectionEnd,
-            LineTerm::Text(" What?".to_owned()),
+            Term::Role("A".to_owned()),
+            Term::Text(" ".to_owned()),
+            Term::DirectionStart,
+            Term::Text("Writing ".to_owned()),
+            Term::Event(Event::Start(Tag::Emphasis)),
+            Term::Event(Event::Text("x".into())),
+            Term::Event(Event::End(Tag::Emphasis)),
+            Term::DirectionEnd,
+            Term::Text(" What?".to_owned()),
         ]);
     }
 
