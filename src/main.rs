@@ -46,6 +46,8 @@ Text in `div` element.
 
 ***Three astrisks.***
 
+^text surrounded by carets^ and ^again^
+
 </div>
 "#;
 

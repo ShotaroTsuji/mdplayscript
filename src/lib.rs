@@ -175,73 +175,94 @@ enum Term<'a> {
     Event(Event<'a>),
 }
 
-fn tokens_to_terms<'a>(tokens: Vec<Token<'a>>, escape: bool) -> impl Iterator<Item=Term<'a>> {
-    tokens.into_iter()
-        .map(move |t| match t {
-            Token::Event(e) => Term::Event(e),
-            Token::Text(tt) => Term::Text(tt.into_string(escape)),
-        })
+fn token_to_term<'a>(token: Token<'a>, escape: bool) -> Term<'a> {
+    match token {
+        Token::Event(e) => Term::Event(e),
+        Token::Text(tt) => Term::Text(tt.into_string(escape)),
+    }
 }
 
-fn parse_dialogues<'a>(line: Vec<Token<'a>>) -> Vec<Term<'a>> {
-    let mut terms = Vec::new();
+fn tokens_to_terms<'a>(tokens: Vec<Token<'a>>, escape: bool) -> impl Iterator<Item=Term<'a>> {
+    tokens.into_iter()
+        .map(move |t| token_to_term(t, escape))
+}
 
-    if line.len() <= 1 {
-        return tokens_to_terms(line, false).collect();
-    }
+fn parse_normal_line<'a>(line: Vec<Token<'a>>) -> Vec<Term<'a>> {
+    tokens_to_terms(line, false)
+        .collect()
+}
 
-    match (&line[0], &line[1]) {
-        (Token::Text(TextToken::Text(name)), Token::Text(TextToken::Rangle)) => {
-            terms.push(Term::Role(name.clone()));
-        },
-        _ => {
-            return tokens_to_terms(line, false).collect();
-        },
-    }
+fn parse_direction_in_dialogue<'a, I>(terms: &mut Vec<Term<'a>>, line: &mut I)
+where
+    I: Iterator<Item=Token<'a>>,
+{
+    let mut direction = vec![Term::DirectionStart];
 
-    let mut i = 2;
-    while i < line.len() {
-        match &line[i] {
-            Token::Event(e) => {
-                terms.push(Term::Event(e.clone()));
+    while let Some(token) = line.next() {
+        match token {
+            Token::Text(TextToken::Right) => {
+                direction.push(Term::DirectionEnd);
+                break;
             },
-            Token::Text(TextToken::Left) => {
-                let mut j = i;
-                let mut right_pos: Option<usize> = None;
-                while j < line.len() {
-                    match &line[j] {
-                        Token::Text(TextToken::Right) => {
-                            right_pos.replace(j);
-                            break;
-                        },
-                        _ => {},
-                    }
-                    j = j + 1;
-                }
-
-                if let Some(right_pos) = right_pos {
-                    terms.push(Term::DirectionStart);
-
-                    tokens_to_terms(line[i+1..j].to_vec(), true)
-                        .for_each(|t| { terms.push(t); });
-
-                    terms.push(Term::DirectionEnd);
-
-                    i = right_pos + 1;
-                    continue;
-                } else {
-                    terms.push(Term::Text("(".to_owned()));
-                }
-            },
-            Token::Text(t) => {
-                terms.push(Term::Text(t.clone().into_string(true)));
+            token => {
+                direction.push(token_to_term(token, true));
             },
         }
+    }
 
-        i = i + 1;
+    match direction.last() {
+        Some(Term::DirectionEnd) => {
+            terms.append(&mut direction);
+        },
+        _ => {
+            for term in direction.into_iter().skip(1) {
+                terms.push(term);
+            }
+        },
+    }
+}
+
+fn parse_dialogue_line<'a>(line: Vec<Token<'a>>) -> Vec<Term<'a>> {
+    let mut terms = Vec::new();
+    let mut line = line.into_iter();
+
+    let character = match line.next() {
+        Some(Token::Text(TextToken::Text(mut name))) => std::mem::take(&mut name),
+        _ => unreachable!(),
+    };
+
+    terms.push(Term::Role(character));
+
+    // Consume the right angle.
+    let _ = line.next().unwrap();
+
+    while let Some(token) = line.next() {
+        match token {
+            Token::Text(TextToken::Left) => {
+                parse_direction_in_dialogue(&mut terms, &mut line);
+            },
+            t => {
+                terms.push(token_to_term(t, true));
+            },
+        }
     }
 
     terms
+}
+
+fn line_starts_with_dialogue<'a>(line: &[Token<'a>]) -> bool {
+    match (line.get(0), line.get(1)) {
+        (Some(Token::Text(TextToken::Text(_))), Some(Token::Text(TextToken::Rangle))) => true,
+        _ => false,
+    }
+}
+
+fn parse_dialogues<'a>(line: Vec<Token<'a>>) -> Vec<Term<'a>> {
+    if line_starts_with_dialogue(&line) {
+        parse_dialogue_line(line)
+    } else {
+        parse_normal_line(line)
+    }
 }
 
 
