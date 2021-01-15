@@ -234,7 +234,7 @@ fn parse_dialogue_line<'a>(line: Vec<Token<'a>>) -> Vec<Term<'a>> {
     terms.push(Term::Role(character));
 
     // Consume the right angle.
-    let _ = line.next().unwrap();
+    assert_eq!(line.next(), Some(Token::Text(TextToken::Rangle)));
 
     while let Some(token) = line.next() {
         match token {
