@@ -4,59 +4,51 @@ use pulldown_cmark::{Event, Tag};
 use pulldown_cmark::escape::escape_html;
 use trim_in_place::TrimInPlace;
 
-pub struct MdPlay<'a, P, F> {
-    parser: P,
-    dummy: F,
+pub struct MdPlay<'a, P> {
+    parser: Option<P>,
     queue: VecDeque<Event<'a>>,
     _marker: PhantomData<&'a P>,
 }
 
-impl<'a, P, F> MdPlay<'a, P, F>
+impl<'a, P> MdPlay<'a, P>
 where
     P: Iterator<Item=Event<'a>>,
-    F: FnMut() -> P,
 {
-    pub fn new(parser: P, dummy: F) -> Self {
+    pub fn new(parser: P) -> Self {
         Self {
-            parser: parser,
-            dummy: dummy,
+            parser: Some(parser),
             queue: VecDeque::new(),
             _marker: PhantomData,
         }
     }
 }
 
-impl<'a, P, F> Iterator for MdPlay<'a, P, F>
+impl<'a, P> Iterator for MdPlay<'a, P>
 where
     P: Iterator<Item=Event<'a>>,
-    F: FnMut() -> P,
 {
     type Item = Event<'a>;
 
     fn next<'s>(&'s mut self) -> Option<Event<'a>> {
-        println!("* queue.len() = {}", self.queue.len());
         if let Some(event) = self.queue.pop_front() {
             return Some(event);
         }
 
-        let event = self.parser.next();
-        println!("* {:?}", event);
+        let event = self.parser.as_mut().unwrap().next();
         match event {
             Some(Event::Start(Tag::Paragraph)) => {
-                let parser = std::mem::replace(&mut self.parser, (self.dummy)());
+                let parser = self.parser.take().unwrap();
                 let tokener = EventTokener::new(parser);
                 let mut dialogues = Dialogues::new(tokener);
                 while let Some(diag) = dialogues.next() {
-                    println!("{:#?}", diag);
                     let events = distil(parse_dialogues(diag));
                     for e in events.into_iter() {
-                        println!("  Events in dialogue: {:?}", e);
                         self.queue.push_back(e);
                     }
                 }
                 let tokener = dialogues.into_inner();
                 let parser = tokener.into_inner();
-                let _ = std::mem::replace(&mut self.parser, parser);
+                let _ = self.parser.replace(parser);
 
                 self.queue.pop_front()
             },
@@ -231,7 +223,6 @@ fn line_starts_with_dialogue<'a>(line: &[Token<'a>]) -> bool {
 }
 
 fn parse_dialogues<'a>(line: Vec<Token<'a>>) -> Vec<Term<'a>> {
-    println!("parse_dialogues: {:?}", line);
     if line_starts_with_dialogue(&line) {
         parse_dialogue_line(line)
     } else {
@@ -289,7 +280,6 @@ where
         line.append(&mut self.cache);
 
         while let Some(token) = self.iter.next() {
-            println!("{:?}", token);
             match token {
                 Token::Event(Event::End(Tag::Paragraph)) => {
                     self.fused = true;

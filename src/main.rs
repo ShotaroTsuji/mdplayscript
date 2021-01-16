@@ -78,7 +78,7 @@ fn main() -> eyre::Result<()> {
     println!("--");
 
     let parser = Parser::new(&SAMPLE);
-    let parser = MdPlay::new(parser, || Parser::new(""));
+    let parser = MdPlay::new(parser);
 
     let mut buf = String::new();
     pulldown_cmark::html::push_html(&mut buf, parser);
