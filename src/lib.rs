@@ -484,13 +484,8 @@ impl<'a> Iterator for TextTokener<'a> {
 
 
 fn find_one_of(s: &str, ps: &str) -> Option<(usize, char)> {
-    for (index, c) in s.char_indices() {
-        if ps.contains(c) {
-            return Some((index, c));
-        }
-    }
-
-    None
+    s.char_indices()
+        .find(|(_, c)| ps.contains(*c))
 }
 
 fn find_puncts_end(s: &str, p: char) -> (&str, &str) {
