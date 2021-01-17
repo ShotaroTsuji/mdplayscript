@@ -65,7 +65,7 @@ fn distil<'a>(terms: Vec<Term<'a>>) -> Vec<Event<'a>> {
     }
 
     let (mut events, mut close) = match terms.get(0) {
-        Some(Term::Role(_)) => (vec![Event::Html("<p class=\"dialogue\">".into())],
+        Some(Term::Character(_)) => (vec![Event::Html("<p class=\"dialogue\">".into())],
             vec![Event::Html("</p>".into()), Event::SoftBreak]),
         _ => (vec![Event::Start(Tag::Paragraph)], vec![Event::End(Tag::Paragraph)]),
     };
@@ -74,9 +74,9 @@ fn distil<'a>(terms: Vec<Term<'a>>) -> Vec<Event<'a>> {
 
     for term in terms.into_iter() {
         match term {
-            Term::Role(role) => {
-                let mut buf = "<span class=\"role\">".to_owned();
-                escape_html(&mut buf, role.as_str()).unwrap();
+            Term::Character(character) => {
+                let mut buf = "<span class=\"character\">".to_owned();
+                escape_html(&mut buf, character.as_str()).unwrap();
                 buf += "</span>";
                 trim_start = true;
 
@@ -139,7 +139,7 @@ fn distil<'a>(terms: Vec<Term<'a>>) -> Vec<Event<'a>> {
 enum Term<'a> {
     DirectionStart,
     DirectionEnd,
-    Role(String),
+    Character(String),
     Text(String),
     Event(Event<'a>),
 }
@@ -200,7 +200,7 @@ fn parse_dialogue_line<'a>(line: Vec<Token<'a>>) -> Vec<Term<'a>> {
         _ => unreachable!(),
     };
 
-    terms.push(Term::Role(character));
+    terms.push(Term::Character(character));
 
     // Consume the right angle.
     assert_eq!(line.next(), Some(Token::Text(TextToken::Rangle)));
@@ -652,7 +652,7 @@ A> What? (__Turning (x)__)"#;
         let mut lines = make_dialogues(s);
         let terms = parse_dialogues(lines.next().unwrap());
         assert_eq!(terms, vec![
-            Term::Role("Young Syrian".to_owned()),
+            Term::Character("Young Syrian".to_owned()),
         ]);
     }
 
@@ -662,7 +662,7 @@ A> What? (__Turning (x)__)"#;
         let mut lines = make_dialogues(s);
         let terms = parse_dialogues(lines.next().unwrap());
         assert_eq!(terms, vec![
-            Term::Role("A".to_owned()),
+            Term::Character("A".to_owned()),
             Term::Text(" ".to_owned()),
             Term::DirectionStart,
             Term::Text("Running".to_owned()),
@@ -677,7 +677,7 @@ A> What? (__Turning (x)__)"#;
         let mut lines = make_dialogues(s);
         let terms = parse_dialogues(lines.next().unwrap());
         assert_eq!(terms, vec![
-            Term::Role("A".to_owned()),
+            Term::Character("A".to_owned()),
             Term::Text(" ".to_owned()),
             Term::DirectionStart,
             Term::Text("Writing ".to_owned()),
@@ -693,7 +693,7 @@ A> What? (__Turning (x)__)"#;
         let mut lines = make_dialogues(s);
         let terms = parse_dialogues(lines.next().unwrap());
         assert_eq!(terms, vec![
-            Term::Role("A".to_owned()),
+            Term::Character("A".to_owned()),
             Term::Text(" ".to_owned()),
             Term::DirectionStart,
             Term::Text("Writing ".to_owned()),
@@ -706,14 +706,14 @@ A> What? (__Turning (x)__)"#;
     }
 
     #[test]
-    fn distilled_dialogues_only_role() {
+    fn distilled_dialogues_only_character() {
         let s = "Young Syrian>";
         let mut lines = make_dialogues(s);
         let terms = parse_dialogues(lines.next().unwrap());
         let events = distil(terms);
         assert_eq!(events, vec![
             Event::Html(r#"<p class="dialogue">"#.into()),
-            Event::Html(r#"<span class="role">Young Syrian</span>"#.into()),
+            Event::Html(r#"<span class="character">Young Syrian</span>"#.into()),
             Event::Html(r#"</p>"#.into()),
             Event::SoftBreak,
         ]);
@@ -729,7 +729,7 @@ A> What? (__Turning (x)__)  "#;
         let events = distil(parse_dialogues(lines.next().unwrap()));
         assert_eq!(events, vec![
             Event::Html(r#"<p class="dialogue">"#.into()),
-            Event::Html(r#"<span class="role">A</span>"#.into()),
+            Event::Html(r#"<span class="character">A</span>"#.into()),
             Event::Text("Hello!".into()),
             Event::SoftBreak,
             Event::Html(r#"<span class="direction">"#.into()),
@@ -742,7 +742,7 @@ A> What? (__Turning (x)__)  "#;
         let events = distil(parse_dialogues(lines.next().unwrap()));
         assert_eq!(events, vec![
             Event::Html(r#"<p class="dialogue">"#.into()),
-            Event::Html(r#"<span class="role">B</span>"#.into()),
+            Event::Html(r#"<span class="character">B</span>"#.into()),
             Event::Text("Bye!".into()),
             Event::SoftBreak,
             Event::Html(r#"</p>"#.into()),
@@ -751,7 +751,7 @@ A> What? (__Turning (x)__)  "#;
         let events = distil(parse_dialogues(lines.next().unwrap()));
         assert_eq!(events, vec![
             Event::Html(r#"<p class="dialogue">"#.into()),
-            Event::Html(r#"<span class="role">A</span>"#.into()),
+            Event::Html(r#"<span class="character">A</span>"#.into()),
             Event::Text("What?".into()),
             Event::Html(r#"<span class="direction">"#.into()),
             Event::Start(Tag::Strong),
