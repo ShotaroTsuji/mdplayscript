@@ -10,3 +10,6 @@ edition = "2018"
 pulldown-cmark = "0.8.0"
 trim-in-place = "0.1.5"
 eyre = "*"
+
+[dev-dependencies]
+structopt = "0.3.21"
