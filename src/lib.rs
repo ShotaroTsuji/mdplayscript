@@ -583,6 +583,9 @@ mod test {
     use pulldown_cmark::Parser;
     use super::*;
 
+    const PARA_START: Event<'static> = Event::Start(Tag::Paragraph);
+    const PARA_END: Event<'static> = Event::End(Tag::Paragraph);
+
     #[test]
     fn puncts_end() {
         let p = '>';
@@ -641,6 +644,24 @@ mod test {
     }
 
     #[test]
+    fn tokens_in_character_and_direction() {
+        let s = "A (aaa)> xxx";
+        let mut parser = Parser::new(s);
+        assert_eq!(parser.next(), Some(PARA_START));
+
+        let tokens: Vec<Token<'_>> = EventTokener::new(parser).collect();
+        assert_eq!(tokens, vec![
+            Token::Text(TextToken::Text("A ".to_owned())),
+            Token::Text(TextToken::Left),
+            Token::Text(TextToken::Text("aaa".to_owned())),
+            Token::Text(TextToken::Right),
+            Token::Text(TextToken::Rangle),
+            Token::Text(TextToken::Text(" xxx".to_owned())),
+            Token::Event(PARA_END),
+        ]);
+    }
+
+    #[test]
     fn dialogues() {
         let s = r#"A> Hello!
 (Turning to audience)
@@ -678,6 +699,13 @@ A> What? (__Turning (x)__)"#;
         ]));
     }
 
+    fn make_dialogues<'a>(s: &'a str) -> Dialogues<'a, EventTokener<'a, Parser<'a>>> {
+        let mut parser = Parser::new(s);
+        assert_eq!(parser.next(), Some(Event::Start(Tag::Paragraph)));
+        let parser = EventTokener::new(parser);
+        Dialogues::new(parser)
+    }
+
     #[test]
     fn end_of_dialogues() {
         let s = "Simple Line";
@@ -696,13 +724,6 @@ A> What? (__Turning (x)__)"#;
         assert_eq!(diag.next(), None);
     }
 
-    fn make_dialogues<'a>(s: &'a str) -> Dialogues<'a, EventTokener<'a, Parser<'a>>> {
-        let mut parser = Parser::new(s);
-        assert_eq!(parser.next(), Some(Event::Start(Tag::Paragraph)));
-        let parser = EventTokener::new(parser);
-        Dialogues::new(parser)
-    }
-
     #[test]
     fn one_term() {
         let s = "Hello!";
@@ -714,7 +735,7 @@ A> What? (__Turning (x)__)"#;
     }
 
     #[test]
-    fn dialogue_with_only_character_name() {
+    fn speech_with_only_character_name() {
         let s = "Young Syrian>";
 
         let mut lines = make_dialogues(s);
@@ -728,10 +749,18 @@ A> What? (__Turning (x)__)"#;
         assert_eq!(terms, vec![
             Term::Character("Young Syrian".to_owned()),
         ]);
+
+        let events = distil(terms);
+        assert_eq!(events, vec![
+            Event::Html(r#"<p class="dialogue">"#.into()),
+            Event::Html(r#"<span class="character">Young Syrian</span>"#.into()),
+            Event::Html(r#"</p>"#.into()),
+            Event::SoftBreak,
+        ]);
     }
 
     #[test]
-    fn with_direction() {
+    fn character_with_direction() {
         let s = "A> (Running) Hello!";
         let mut lines = make_dialogues(s);
         let terms = parse_dialogues(lines.next().unwrap());
@@ -776,20 +805,6 @@ A> What? (__Turning (x)__)"#;
             Term::Event(Event::End(Tag::Emphasis)),
             Term::DirectionEnd,
             Term::Text(" What?".to_owned()),
-        ]);
-    }
-
-    #[test]
-    fn distilled_dialogues_only_character() {
-        let s = "Young Syrian>";
-        let mut lines = make_dialogues(s);
-        let terms = parse_dialogues(lines.next().unwrap());
-        let events = distil(terms);
-        assert_eq!(events, vec![
-            Event::Html(r#"<p class="dialogue">"#.into()),
-            Event::Html(r#"<span class="character">Young Syrian</span>"#.into()),
-            Event::Html(r#"</p>"#.into()),
-            Event::SoftBreak,
         ]);
     }
 
