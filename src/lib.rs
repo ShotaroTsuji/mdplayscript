@@ -514,6 +514,8 @@ mod test {
 
     const PARA_START: Event<'static> = Event::Start(Tag::Paragraph);
     const PARA_END: Event<'static> = Event::End(Tag::Paragraph);
+    const H6_START: Event<'static> = Event::Start(Tag::Heading(6));
+    const H6_END: Event<'static> = Event::End(Tag::Heading(6));
 
     #[test]
     fn puncts_end() {
@@ -817,15 +819,19 @@ Independent Paragraph"#;
         let mut lines = make_dialogues(s);
         let events = distil(parse_dialogues(lines.next().unwrap()));
         assert_eq!(events, vec![
-            Event::Html(r#"<h6 class="dialogue">"#.into()),
-            Event::Html(r#"<span class="character">A</span>"#.into()),
+            Event::Html(r#"<div class="speech">"#.into()),
+            H6_START,
+            Event::Html(r#"<span class="character">"#.into()),
+            Event::Text("A".into()),
+            Event::Html("</span>".into()),
             Event::Html(r#"<span class="direction">"#.into()),
             Event::Text("Running".into()),
             Event::Html("</span>".into()),
-            Event::Html("</h6>".into()),
-            Event::Html(r#"<p class="dialogue">"#.into()),
+            H6_END,
+            PARA_START,
             Event::Text("Hello!".into()),
-            Event::Html("</p>".into()),
+            PARA_END,
+            Event::Html("</div>".into()),
             Event::SoftBreak,
         ]);
     }
@@ -836,12 +842,16 @@ Independent Paragraph"#;
         let mut lines = make_dialogues(s);
         let events = distil(parse_dialogues(lines.next().unwrap()));
         assert_eq!(events, vec![
-            Event::Html(r#"<h6 class="dialogue">"#.into()),
-            Event::Html(r#"<span class="character">A</span>"#.into()),
-            Event::Html("</h6>".into()),
-            Event::Html(r#"<p class="dialogue">"#.into()),
+            Event::Html(r#"<div class="speech">"#.into()),
+            H6_START,
+            Event::Html(r#"<span class="character">"#.into()),
+            Event::Text("A".into()),
+            Event::Html("</span>".into()),
+            H6_END,
+            PARA_START,
             Event::Text("Hello!".into()),
-            Event::Html("</p>".into()),
+            PARA_END,
+            Event::Html("</div>".into()),
             Event::SoftBreak,
         ]);
     }
