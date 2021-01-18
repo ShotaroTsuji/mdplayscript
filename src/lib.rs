@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 use std::collections::VecDeque;
-use pulldown_cmark::{Event, Tag};
+use pulldown_cmark::{Event, Tag, CowStr};
 use pulldown_cmark::escape::escape_html;
 use trim_in_place::TrimInPlace;
 
@@ -61,6 +61,16 @@ where
         }
     }
 }
+
+const PARA_START: Event<'static> = Event::Start(Tag::Paragraph);
+const PARA_END: Event<'static> = Event::End(Tag::Paragraph);
+const H6_START: Event<'static> = Event::Start(Tag::Heading(6));
+const H6_END: Event<'static> = Event::End(Tag::Heading(6));
+const DIV_SPEECH: Event<'static> = Event::Html(CowStr::Borrowed(r#"<div class="speech">"#));
+const DIV_END: Event<'static> = Event::Html(CowStr::Borrowed("</div>"));
+const SPAN_CHARACTER: Event<'static> = Event::Html(CowStr::Borrowed(r#"<span class="character">"#));
+const SPAN_DIRECTION: Event<'static> = Event::Html(CowStr::Borrowed(r#"<span class="direction">"#));
+const SPAN_END: Event<'static> = Event::Html(CowStr::Borrowed("</span>"));
 
 fn distil<'a>(terms: Vec<Term<'a>>) -> Vec<Event<'a>> {
     if terms.len() == 0 {
@@ -512,11 +522,6 @@ mod test {
     use pulldown_cmark::Parser;
     use super::*;
 
-    const PARA_START: Event<'static> = Event::Start(Tag::Paragraph);
-    const PARA_END: Event<'static> = Event::End(Tag::Paragraph);
-    const H6_START: Event<'static> = Event::Start(Tag::Heading(6));
-    const H6_END: Event<'static> = Event::End(Tag::Heading(6));
-
     #[test]
     fn puncts_end() {
         let p = '>';
@@ -683,9 +688,15 @@ A> What? (__Turning (x)__)"#;
 
         let events = distil(terms);
         assert_eq!(events, vec![
-            Event::Html(r#"<p class="dialogue">"#.into()),
-            Event::Html(r#"<span class="character">Young Syrian</span>"#.into()),
-            Event::Html(r#"</p>"#.into()),
+            DIV_SPEECH,
+            H6_START,
+            SPAN_CHARACTER,
+            Event::Text("Young Syrian".into()),
+            SPAN_END,
+            H6_END,
+            PARA_START,
+            PARA_END,
+            DIV_END,
             Event::SoftBreak,
         ]);
     }
@@ -748,37 +759,55 @@ A> What? (__Turning (x)__)  "#;
         let mut lines = make_dialogues(s);
         let events = distil(parse_dialogues(lines.next().unwrap()));
         assert_eq!(events, vec![
-            Event::Html(r#"<p class="dialogue">"#.into()),
-            Event::Html(r#"<span class="character">A</span>"#.into()),
+            DIV_SPEECH,
+            H6_START,
+            SPAN_CHARACTER,
+            Event::Text("A".into()),
+            SPAN_END,
+            H6_END,
+            PARA_START,
             Event::Text("Hello!".into()),
             Event::SoftBreak,
-            Event::Html(r#"<span class="direction">"#.into()),
+            SPAN_DIRECTION,
             Event::Text("Turning to audience".into()),
-            Event::Html("</span>".into()),
+            SPAN_END,
             Event::SoftBreak,
-            Event::Html(r#"</p>"#.into()),
+            PARA_END,
+            DIV_END,
             Event::SoftBreak,
         ]);
         let events = distil(parse_dialogues(lines.next().unwrap()));
         assert_eq!(events, vec![
-            Event::Html(r#"<p class="dialogue">"#.into()),
-            Event::Html(r#"<span class="character">B</span>"#.into()),
+            DIV_SPEECH,
+            H6_START,
+            SPAN_CHARACTER,
+            Event::Text("A".into()),
+            SPAN_END,
+            H6_END,
+            PARA_START,
             Event::Text("Bye!".into()),
             Event::SoftBreak,
-            Event::Html(r#"</p>"#.into()),
+            PARA_END,
+            DIV_END,
             Event::SoftBreak,
         ]);
         let events = distil(parse_dialogues(lines.next().unwrap()));
         assert_eq!(events, vec![
-            Event::Html(r#"<p class="dialogue">"#.into()),
-            Event::Html(r#"<span class="character">A</span>"#.into()),
+            DIV_SPEECH,
+            H6_START,
+            SPAN_CHARACTER,
+            Event::Text("A".into()),
+            SPAN_END,
+            H6_END,
+            PARA_START,
             Event::Text("What?".into()),
-            Event::Html(r#"<span class="direction">"#.into()),
+            SPAN_DIRECTION,
             Event::Start(Tag::Strong),
             Event::Text("Turning (x)".into()),
             Event::End(Tag::Strong),
-            Event::Html("</span>".into()),
-            Event::Html(r#"</p>"#.into()),
+            SPAN_END,
+            PARA_END,
+            DIV_END,
             Event::SoftBreak,
         ]);
 
@@ -798,7 +827,7 @@ Independent Paragraph"#;
         let _b_hello = distil(parse_dialogues(lines.next().unwrap()));
         let parser = lines.into_inner();
         let mut parser = parser.into_inner();
-        assert_eq!(parser.next(), Some(Event::Start(Tag::Paragraph)));
+        assert_eq!(parser.next(), Some(PARA_START));
     }
 
     #[test]
@@ -819,19 +848,19 @@ Independent Paragraph"#;
         let mut lines = make_dialogues(s);
         let events = distil(parse_dialogues(lines.next().unwrap()));
         assert_eq!(events, vec![
-            Event::Html(r#"<div class="speech">"#.into()),
+            DIV_SPEECH,
             H6_START,
-            Event::Html(r#"<span class="character">"#.into()),
+            SPAN_CHARACTER,
             Event::Text("A".into()),
-            Event::Html("</span>".into()),
-            Event::Html(r#"<span class="direction">"#.into()),
+            SPAN_END,
+            SPAN_DIRECTION,
             Event::Text("Running".into()),
-            Event::Html("</span>".into()),
+            SPAN_END,
             H6_END,
             PARA_START,
             Event::Text("Hello!".into()),
             PARA_END,
-            Event::Html("</div>".into()),
+            DIV_END,
             Event::SoftBreak,
         ]);
     }
@@ -842,16 +871,16 @@ Independent Paragraph"#;
         let mut lines = make_dialogues(s);
         let events = distil(parse_dialogues(lines.next().unwrap()));
         assert_eq!(events, vec![
-            Event::Html(r#"<div class="speech">"#.into()),
+            DIV_SPEECH,
             H6_START,
-            Event::Html(r#"<span class="character">"#.into()),
+            SPAN_CHARACTER,
             Event::Text("A".into()),
-            Event::Html("</span>".into()),
+            SPAN_END,
             H6_END,
             PARA_START,
             Event::Text("Hello!".into()),
             PARA_END,
-            Event::Html("</div>".into()),
+            DIV_END,
             Event::SoftBreak,
         ]);
     }
