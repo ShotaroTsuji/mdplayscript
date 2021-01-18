@@ -45,11 +45,6 @@ where
 
                 while let Some(diag) = dialogues.next() {
                     let events = distil(parse_dialogues(diag));
-                    let events = if self.heading {
-                        add_dialogue_heading(events)
-                    } else {
-                        events
-                    };
                     for e in events.into_iter() {
                         self.queue.push_back(e);
                     }
@@ -65,72 +60,6 @@ where
             None => None,
         }
     }
-}
-
-fn add_dialogue_heading<'a>(line: Vec<Event<'a>>) -> Vec<Event<'a>> {
-    match line.get(0) {
-        Some(p @ Event::Html(_)) if p == &Event::Html("<p class=\"dialogue\">".into()) => {},
-        _ => return line,
-    }
-
-    let mut dialogue = Vec::new();
-    let mut heading = Vec::new();
-    let mut line = line.into_iter();
-
-    match line.next() {
-        Some(p @ Event::Html(_)) if p == Event::Html("<p class=\"dialogue\">".into()) => {
-            dialogue.push(p);
-        },
-        _ => unreachable!(),
-    }
-
-    match line.next() {
-        Some(Event::Html(s)) if s.as_ref().starts_with("<span class=\"character\">") &&
-            s.as_ref().ends_with("</span>") => {
-                heading.push(Event::Html(s));
-        },
-        Some(e) => {
-            dialogue.push(e);
-        },
-        None => {},
-    }
-
-    match line.next() {
-        Some(p @ Event::Html(_)) if p == Event::Html("<span class=\"direction\">".into()) => {
-            heading.push(p);
-
-            while let Some(event) = line.next() {
-                match event {
-                    p @ Event::Html(_) if p == Event::Html("</span>".into()) => {
-                        heading.push(p);
-                        break;
-                    },
-                    e => {
-                        heading.push(e);
-                    },
-                }
-            }
-        },
-        Some(e) => {
-            dialogue.push(e);
-        },
-        _ => {},
-    }
-
-    for e in line {
-        dialogue.push(e);
-    }
-
-    let mut line = Vec::new();
-
-    if heading.len() > 0 {
-        line.push(Event::Html("<h6 class=\"dialogue\">".into()));
-        line.append(&mut heading);
-        line.push(Event::Html("</h6>".into()));
-        line.append(&mut dialogue);
-    }
-
-    line
 }
 
 fn distil<'a>(terms: Vec<Term<'a>>) -> Vec<Event<'a>> {
@@ -887,7 +816,6 @@ Independent Paragraph"#;
         let s = "A> (Running) Hello!";
         let mut lines = make_dialogues(s);
         let events = distil(parse_dialogues(lines.next().unwrap()));
-        let events = add_dialogue_heading(events);
         assert_eq!(events, vec![
             Event::Html(r#"<h6 class="dialogue">"#.into()),
             Event::Html(r#"<span class="character">A</span>"#.into()),
@@ -907,7 +835,6 @@ Independent Paragraph"#;
         let s = "A> Hello!";
         let mut lines = make_dialogues(s);
         let events = distil(parse_dialogues(lines.next().unwrap()));
-        let events = add_dialogue_heading(events);
         assert_eq!(events, vec![
             Event::Html(r#"<h6 class="dialogue">"#.into()),
             Event::Html(r#"<span class="character">A</span>"#.into()),
@@ -924,7 +851,6 @@ Independent Paragraph"#;
         let s = "Hello!";
         let mut lines = make_dialogues(s);
         let events = distil(parse_dialogues(lines.next().unwrap()));
-        let events = add_dialogue_heading(events);
         assert_eq!(events, vec![
             Event::Start(Tag::Paragraph),
             Event::Text("Hello!".into()),
