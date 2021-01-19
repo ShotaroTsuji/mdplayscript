@@ -6,7 +6,6 @@ use trim_in_place::TrimInPlace;
 pub struct MdPlay<'a, P> {
     parser: Option<P>,
     queue: VecDeque<Event<'a>>,
-    heading: bool,
     _marker: PhantomData<&'a P>,
 }
 
@@ -14,11 +13,10 @@ impl<'a, P> MdPlay<'a, P>
 where
     P: Iterator<Item=Event<'a>>,
 {
-    pub fn new(parser: P, heading: bool) -> Self {
+    pub fn new(parser: P) -> Self {
         Self {
             parser: Some(parser),
             queue: VecDeque::new(),
-            heading: heading,
             _marker: PhantomData,
         }
     }
