@@ -1,7 +1,6 @@
 use std::marker::PhantomData;
 use std::collections::VecDeque;
 use pulldown_cmark::{Event, Tag, CowStr};
-use pulldown_cmark::escape::escape_html;
 use trim_in_place::TrimInPlace;
 
 pub struct MdPlay<'a, P> {
@@ -40,18 +39,16 @@ where
         match event {
             Some(Event::Start(Tag::Paragraph)) => {
                 let parser = self.parser.take().unwrap();
-                let tokener = EventTokener::new(parser);
-                let mut dialogues = Dialogues::new(tokener);
+                let (tokener, parser) = EventTokener::read_paragraph(parser);
+                let mut speeches = Speeches::from_vec(tokener);
 
-                while let Some(diag) = dialogues.next() {
-                    let events = distil(parse_dialogues(diag));
+                while let Some(speech) = speeches.next() {
+                    let events = distil(parse_speech(speech));
                     for e in events.into_iter() {
                         self.queue.push_back(e);
                     }
                 }
 
-                let tokener = dialogues.into_inner();
-                let parser = tokener.into_inner();
                 let _ = self.parser.replace(parser);
 
                 self.queue.pop_front()
@@ -72,73 +69,114 @@ const SPAN_CHARACTER: Event<'static> = Event::Html(CowStr::Borrowed(r#"<span cla
 const SPAN_DIRECTION: Event<'static> = Event::Html(CowStr::Borrowed(r#"<span class="direction">"#));
 const SPAN_END: Event<'static> = Event::Html(CowStr::Borrowed("</span>"));
 
+fn trim_end_of_top<'a>(events: &mut Vec<Event<'a>>) {
+    match events.pop() {
+        Some(Event::Text(s)) => {
+            let mut s = s.into_string();
+            TrimInPlace::trim_end_in_place(&mut s);
+            events.push(Event::Text(s.into()));
+        },
+        Some(e) => {
+            events.push(e);
+        },
+        _ => {},
+    }
+}
+
+fn distil_speech<'a>(terms: Vec<Term<'a>>) -> Vec<Event<'a>> {
+    let mut events = vec![DIV_SPEECH.clone()];
+    let mut terms = terms.into_iter();
+
+    let mut trim_start = false;
+
+    while let Some(term) = terms.next() {
+        match term {
+            Term::HeadingStart => {
+                events.push(H6_START.clone());
+                trim_start = false;
+            },
+            Term::HeadingEnd => {
+                events.push(H6_END.clone());
+                events.push(PARA_START.clone());
+                trim_start = true;
+            },
+            Term::Character(mut s) => {
+                TrimInPlace::trim_in_place(&mut s);
+                events.push(SPAN_CHARACTER.clone());
+                events.push(Event::Text(s.into()));
+                events.push(SPAN_END.clone());
+                trim_start = false;
+            },
+            Term::DirectionStart => {
+                trim_end_of_top(&mut events);
+                events.push(SPAN_DIRECTION.clone());
+                trim_start = true;
+            },
+            Term::DirectionEnd => {
+                trim_end_of_top(&mut events);
+                events.push(SPAN_END.clone());
+                trim_start = true;
+            },
+            Term::Text(mut s) => {
+                if trim_start {
+                    TrimInPlace::trim_start_in_place(&mut s);
+                }
+                if s.len() > 0 {
+                    events.push(Event::Text(s.into()));
+                }
+            },
+            Term::Event(e) => {
+                events.push(e);
+            },
+        }
+    }
+
+    events.push(PARA_END.clone());
+    events.push(DIV_END.clone());
+    events.push(Event::SoftBreak);
+
+    events
+}
+
 fn distil<'a>(terms: Vec<Term<'a>>) -> Vec<Event<'a>> {
     if terms.len() == 0 {
         return vec![];
     }
 
     let (mut events, mut close) = match terms.get(0) {
-        Some(Term::Character(_)) => (vec![Event::Html("<p class=\"dialogue\">".into())],
-            vec![Event::Html("</p>".into()), Event::SoftBreak]),
-        _ => (vec![Event::Start(Tag::Paragraph)], vec![Event::End(Tag::Paragraph)]),
+        Some(Term::HeadingStart) => return distil_speech(terms),
+        _ => (vec![PARA_START.clone()], vec![PARA_END.clone()]),
     };
 
     let mut trim_start = false;
 
     for term in terms.into_iter() {
         match term {
-            Term::Character(character) => {
-                let mut buf = "<span class=\"character\">".to_owned();
-                escape_html(&mut buf, character.as_str()).unwrap();
-                buf += "</span>";
-                trim_start = true;
-
-                events.push(Event::Html(buf.into()));
-            },
+            Term::HeadingStart |
+            Term::HeadingEnd |
+            Term::Character(_) => unreachable!(),
             Term::Text(mut text) => {
                 if trim_start {
                     TrimInPlace::trim_start_in_place(&mut text);
                 }
-
                 if text.len() > 0 {
                     events.push(Event::Text(text.into()));
                 }
+                trim_start = false;
             },
             Term::DirectionStart => {
-                match events.pop() {
-                    Some(Event::Text(text)) => {
-                        let mut text = text.into_string();
-                        TrimInPlace::trim_end_in_place(&mut text);
-                        events.push(Event::Text(text.into()));
-                    },
-                    Some(e) => {
-                        events.push(e);
-                    },
-                    None => {},
-                }
-
+                trim_end_of_top(&mut events);
+                events.push(SPAN_DIRECTION.clone());
                 trim_start = true;
-                events.push(Event::Html("<span class=\"direction\">".into()));
             },
             Term::DirectionEnd => {
-                match events.pop() {
-                    Some(Event::Text(text)) => {
-                        let mut text = text.into_string();
-                        TrimInPlace::trim_end_in_place(&mut text);
-                        events.push(Event::Text(text.into()));
-                    },
-                    Some(e) => {
-                        events.push(e);
-                    },
-                    None => {},
-                }
-
+                trim_end_of_top(&mut events);
+                events.push(SPAN_END.clone());
                 trim_start = true;
-                events.push(Event::Html("</span>".into()));
             },
             Term::Event(e) => {
-                trim_start = false;
                 events.push(e);
+                trim_start = false;
             },
         }
     }
@@ -150,6 +188,8 @@ fn distil<'a>(terms: Vec<Term<'a>>) -> Vec<Event<'a>> {
 
 #[derive(Debug,Clone,PartialEq)]
 enum Term<'a> {
+    HeadingStart,
+    HeadingEnd,
     DirectionStart,
     DirectionEnd,
     Character(String),
@@ -174,13 +214,11 @@ fn parse_normal_line<'a>(line: Vec<Token<'a>>) -> Vec<Term<'a>> {
         .collect()
 }
 
-fn parse_direction_in_dialogue<'a, I>(terms: &mut Vec<Term<'a>>, line: &mut I)
-where
-    I: Iterator<Item=Token<'a>>,
+fn parse_direction_in_speech<'a>(line: &mut VecDeque<Token<'a>>, terms: &mut Vec<Term<'a>>)
 {
     let mut direction = vec![Term::DirectionStart];
 
-    while let Some(token) = line.next() {
+    while let Some(token) = line.pop_front() {
         match token {
             Token::Text(TextToken::Right) => {
                 direction.push(Term::DirectionEnd);
@@ -204,24 +242,16 @@ where
     }
 }
 
-fn parse_dialogue_line<'a>(line: Vec<Token<'a>>) -> Vec<Term<'a>> {
+fn parse_speech_line<'a>(line: Vec<Token<'a>>) -> Vec<Term<'a>> {
     let mut terms = Vec::new();
-    let mut line = line.into_iter();
+    let mut line: VecDeque<_> = line.into();
 
-    let character = match line.next() {
-        Some(Token::Text(TextToken::Text(mut name))) => std::mem::take(&mut name),
-        _ => unreachable!(),
-    };
+    parse_speech_heading(&mut line, &mut terms);
 
-    terms.push(Term::Character(character));
-
-    // Consume the right angle.
-    assert_eq!(line.next(), Some(Token::Text(TextToken::Rangle)));
-
-    while let Some(token) = line.next() {
+    while let Some(token) = line.pop_front() {
         match token {
             Token::Text(TextToken::Left) => {
-                parse_direction_in_dialogue(&mut terms, &mut line);
+                parse_direction_in_speech(&mut line, &mut terms);
             },
             t => {
                 terms.push(token_to_term(t, true));
@@ -232,115 +262,114 @@ fn parse_dialogue_line<'a>(line: Vec<Token<'a>>) -> Vec<Term<'a>> {
     terms
 }
 
-fn line_starts_with_dialogue<'a>(line: &[Token<'a>]) -> bool {
-    match (line.get(0), line.get(1)) {
-        (Some(Token::Text(TextToken::Text(_))), Some(Token::Text(TextToken::Rangle))) => true,
-        _ => false,
-    }
-}
-
-fn parse_dialogues<'a>(line: Vec<Token<'a>>) -> Vec<Term<'a>> {
-    if line_starts_with_dialogue(&line) {
-        parse_dialogue_line(line)
+fn parse_speech<'a>(line: Vec<Token<'a>>) -> Vec<Term<'a>> {
+    if speech_heading_kind(&line).is_some() {
+        parse_speech_line(line)
     } else {
         parse_normal_line(line)
     }
 }
 
+fn parse_speech_heading<'a>(line: &mut VecDeque<Token<'a>>, terms: &mut Vec<Term<'a>>) {
+    terms.push(Term::HeadingStart);
 
-struct Dialogues<'a, I>
-where
-    I: Iterator<Item=Token<'a>>,
-{
-    iter: I,
-    fused: bool,
-    cache: Vec<Token<'a>>,
+    match line.pop_front() {
+        Some(Token::Text(TextToken::Text(s))) => {
+            terms.push(Term::Character(s));
+        },
+        _ => unreachable!(),
+    }
+
+    match line.pop_front() {
+        Some(Token::Text(TextToken::Rangle)) => {
+            terms.push(Term::HeadingEnd);
+            return;
+        },
+        Some(Token::Text(TextToken::Left)) => {},
+        _ => unreachable!(),
+    }
+
+    match line.pop_front() {
+        Some(Token::Text(TextToken::Text(s))) => {
+            terms.push(Term::DirectionStart);
+            terms.push(Term::Text(s));
+            terms.push(Term::DirectionEnd);
+        },
+        _ => unreachable!(),
+    }
+
+    match line.pop_front() {
+        Some(Token::Text(TextToken::Right)) => {},
+        _ => unreachable!(),
+    }
+
+    match line.pop_front() {
+        Some(Token::Text(TextToken::Rangle)) => {},
+        _ => unreachable!(),
+    }
+
+    terms.push(Term::HeadingEnd);
 }
 
-impl<'a, I> Dialogues<'a, I>
-where
-    I: Iterator<Item=Token<'a>>,
-{
-    fn new(iter: I) -> Self {
+#[derive(Debug,Clone,PartialEq)]
+enum HeadingKind {
+    Simple,
+    WithDirection,
+}
+
+// text [ '(' text ')' ] '>'
+fn speech_heading_kind<'a>(line: &[Token<'a>]) -> Option<HeadingKind> {
+    match line {
+        [Token::Text(TextToken::Text(_)), Token::Text(TextToken::Rangle), ..] => Some(HeadingKind::Simple),
+        [Token::Text(TextToken::Text(_)), Token::Text(TextToken::Left),
+         Token::Text(TextToken::Text(_)), Token::Text(TextToken::Right),
+         Token::Text(TextToken::Rangle), ..] => Some(HeadingKind::WithDirection),
+        _ => None,
+    }
+}
+
+struct Speeches<'a> {
+    tokens: Vec<Token<'a>>,
+}
+
+impl<'a> Speeches<'a> {
+    fn from_vec(vec: Vec<Token<'a>>) -> Self {
         Self {
-            iter: iter,
-            fused: false,
-            cache: Vec::new(),
+            tokens: vec,
         }
     }
-
-    fn into_inner(self) -> I {
-        self.iter
-    }
 }
 
-fn vec_to_option_if_empty<T>(vec: Vec<T>) -> Option<Vec<T>> {
-    if vec.is_empty() {
-        None
-    } else {
-        Some(vec)
-    }
-}
-
-impl<'a, I> Iterator for Dialogues<'a, I>
-where
-    I: Iterator<Item=Token<'a>>,
-{
+impl<'a> Iterator for Speeches<'a> {
     type Item = Vec<Token<'a>>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.fused {
+        if self.tokens.is_empty() {
             return None;
         }
 
-        let mut line = Vec::new();
-        line.append(&mut self.cache);
+        let mut current = 0;
 
-        while let Some(token) = self.iter.next() {
+        while let Some(pos) = self.tokens[current..].iter()
+            .position(|token| {
             match token {
-                Token::Event(Event::End(Tag::Paragraph)) => {
-                    self.fused = true;
-                    return vec_to_option_if_empty(line);
-                },
-                rangle @ Token::Text(TextToken::Rangle) => {
-                    let text = match line.pop() {
-                        Some(Token::Text(TextToken::Text(text))) => text,
-                        Some(token) => {
-                            line.push(token);
-                            continue;
-                        },
-                        None => continue,
-                    };
-
-                    let is_first = match line.pop() {
-                        None => true,
-                        Some(sb @ Token::Event(Event::SoftBreak)) => {
-                            line.push(sb);
-                            false
-                        },
-                        Some(token) => {
-                            line.push(Token::Text(TextToken::Text(text)));
-                            line.push(token);
-                            continue;
-                        },
-                    };
-
-                    if is_first {
-                        line.push(Token::Text(TextToken::Text(text)));
-                        line.push(rangle);
-                    } else {
-                        self.cache.push(Token::Text(TextToken::Text(text)));
-                        self.cache.push(rangle);
-                        return vec_to_option_if_empty(line);
-                    }
-                },
-                t => {
-                    line.push(t);
-                },
+                Token::Event(Event::SoftBreak) => true,
+                _ => false,
             }
+        }) {
+            let found_line_end = if let Some(slice) = self.tokens.get(current+pos+1..) {
+                speech_heading_kind(slice).is_some()
+            } else {
+                true
+            };
+            if found_line_end {
+                let remain = self.tokens.split_off(current+pos+1);
+                return Some(std::mem::replace(&mut self.tokens, remain));
+            }
+            current = current + pos + 1;
         }
 
-        vec_to_option_if_empty(line)
+        Some(std::mem::take(&mut self.tokens))
     }
 }
 
@@ -394,24 +423,37 @@ struct EventTokener<'a, P> {
     parser: P,
     queue: VecDeque<Token<'a>>,
     nest_level: usize,
+    fused: bool,
     _phantom: PhantomData<&'a P>,
 }
 
 impl<'a, P> EventTokener<'a, P>
 where
-    P: Iterator<Item=Event<'a>>,
+    P: 'a + Iterator<Item=Event<'a>>,
 {
     fn new(parser: P) -> EventTokener<'a, P> {
         Self {
             parser: parser,
             queue: VecDeque::new(),
             nest_level: 0,
+            fused: false,
             _phantom: PhantomData,
         }
     }
 
     fn into_inner(self) -> P {
         self.parser
+    }
+
+    fn read_paragraph(parser: P) -> (Vec<Token<'a>>, P) {
+        let mut tokener = Self::new(parser);
+        let mut paragraph = Vec::new();
+
+        while let Some(token) = tokener.next() {
+            paragraph.push(token);
+        }
+
+        (paragraph, tokener.parser)
     }
 }
 
@@ -422,19 +464,25 @@ where
     type Item = Token<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some(token) = self.queue.pop_front() {
+        if self.fused {
+            None
+        } else if let Some(token) = self.queue.pop_front() {
             Some(token)
         } else if let Some(event) = self.parser.next() {
             match (event, self.nest_level) {
-                (Event::Start(tag), l) => {
-                    self.nest_level = l + 1;
-                    Some(Token::Event(Event::Start(tag)))
+                (Event::End(Tag::Paragraph), 0) => {
+                    self.fused = true;
+                    None
                 },
-                (Event::End(tag), l) => {
+                (ret @ Event::Start(_), l) => {
+                    self.nest_level = l + 1;
+                    Some(Token::Event(ret))
+                },
+                (ret @ Event::End(_), l) => {
                     if l > 0 {
                         self.nest_level = l - 1;
                     }
-                    Some(Token::Event(Event::End(tag)))
+                    Some(Token::Event(ret))
                 },
                 (Event::Text(text), 0) => {
                     for t in TextTokener::new(&text) {
@@ -536,6 +584,16 @@ mod test {
     }
 
     #[test]
+    fn token_of_rangle_after_rparen() {
+        let s = ")>";
+        let tokens: Vec<TextToken> = TextTokener::new(s).collect();
+        assert_eq!(tokens, vec![
+            TextToken::Right,
+            TextToken::Rangle,
+        ]);
+    }
+
+    #[test]
     fn text_tokener() {
         let s = "AAA> xxx ((yy)) (ddd)";
         let token = TextTokener::new(s).collect::<Vec<TextToken>>();
@@ -575,7 +633,6 @@ mod test {
         assert_eq!(parser.next(), Some(Token::Text(TextToken::Right)));
         assert_eq!(parser.next(), Some(Token::Event(Event::SoftBreak)));
         assert_eq!(parser.next(), Some(Token::Text(TextToken::Text("xxx".to_owned()))));
-        assert_eq!(parser.next(), Some(Token::Event(Event::End(Tag::Paragraph))));
         assert_eq!(parser.next(), None);
     }
 
@@ -593,97 +650,125 @@ mod test {
             Token::Text(TextToken::Right),
             Token::Text(TextToken::Rangle),
             Token::Text(TextToken::Text(" xxx".to_owned())),
-            Token::Event(PARA_END),
         ]);
     }
 
     #[test]
-    fn dialogues() {
-        let s = r#"A> Hello!
-(Turning to audience)
-B> Bye!
-A> What? (__Turning (x)__)"#;
+    fn event_tokener_for_paragraphs() {
+        let s = r#"First
+
+Second
+
+Third"#;
         let mut parser = Parser::new(s);
-        assert_eq!(parser.next(), Some(Event::Start(Tag::Paragraph)));
-        let mut parser = EventTokener::new(parser);
-        let mut lines = Dialogues::new(&mut parser);
-        assert_eq!(lines.next(), Some(vec![
-            Token::Text(TextToken::Text("A".to_owned())),
-            Token::Text(TextToken::Rangle),
-            Token::Text(TextToken::Text(" Hello!".to_owned())),
-            Token::Event(Event::SoftBreak),
-            Token::Text(TextToken::Left),
-            Token::Text(TextToken::Text("Turning to audience".to_owned())),
-            Token::Text(TextToken::Right),
-            Token::Event(Event::SoftBreak),
-        ]));
-        assert_eq!(lines.next(), Some(vec![
-            Token::Text(TextToken::Text("B".to_owned())),
-            Token::Text(TextToken::Rangle),
-            Token::Text(TextToken::Text(" Bye!".to_owned())),
-            Token::Event(Event::SoftBreak),
-        ]));
-        assert_eq!(lines.next(), Some(vec![
-            Token::Text(TextToken::Text("A".to_owned())),
-            Token::Text(TextToken::Rangle),
-            Token::Text(TextToken::Text(" What? ".to_owned())),
-            Token::Text(TextToken::Left),
-            Token::Event(Event::Start(Tag::Strong)),
-            Token::Event(Event::Text("Turning (x)".into())),
-            Token::Event(Event::End(Tag::Strong)),
-            Token::Text(TextToken::Right),
-        ]));
+        assert_eq!(parser.next(), Some(PARA_START));
+
+        let mut tokener = EventTokener::new(parser);
+        assert_eq!(tokener.next(), Some(Token::Text(TextToken::Text("First".to_owned()))));
+        assert_eq!(tokener.next(), None);
+
+        let mut parser = tokener.into_inner();
+        assert_eq!(parser.next(), Some(PARA_START));
+
+        let mut tokener = EventTokener::new(parser);
+        assert_eq!(tokener.next(), Some(Token::Text(TextToken::Text("Second".to_owned()))));
+        assert_eq!(tokener.next(), None);
+
+        let mut parser = tokener.into_inner();
+        assert_eq!(parser.next(), Some(PARA_START));
+
+        let mut tokener = EventTokener::new(parser);
+        assert_eq!(tokener.next(), Some(Token::Text(TextToken::Text("Third".to_owned()))));
+        assert_eq!(tokener.next(), None);
+
+        let mut parser = tokener.into_inner();
+        assert_eq!(parser.next(), None);
     }
 
-    fn make_dialogues<'a>(s: &'a str) -> Dialogues<'a, EventTokener<'a, Parser<'a>>> {
+    fn test_starts_with_speech_heading(s: &str, expected: Option<HeadingKind>) {
         let mut parser = Parser::new(s);
-        assert_eq!(parser.next(), Some(Event::Start(Tag::Paragraph)));
-        let parser = EventTokener::new(parser);
-        Dialogues::new(parser)
+        assert_eq!(parser.next(), Some(PARA_START));
+        let (tokens, mut parser) = EventTokener::read_paragraph(parser);
+        assert_eq!(speech_heading_kind(&tokens), expected);
+        assert_eq!(parser.next(), None);
     }
 
     #[test]
-    fn end_of_dialogues() {
-        let s = "Simple Line";
-        let mut dialogues = make_dialogues(s);
-        assert_eq!(dialogues.next(), Some(vec![
-                Token::Text(TextToken::Text("Simple Line".to_owned())),
+    fn lines_start_with_speech_heading() {
+        test_starts_with_speech_heading("Normal line", None);
+        test_starts_with_speech_heading("A>", Some(HeadingKind::Simple));
+        test_starts_with_speech_heading("A> Hello", Some(HeadingKind::Simple));
+        test_starts_with_speech_heading("A (laughing)>", Some(HeadingKind::WithDirection));
+        test_starts_with_speech_heading("A (running)> Hello *World*.", Some(HeadingKind::WithDirection));
+    }
+
+    #[test]
+    fn speeches_from_lines() {
+        let s = "A> Hello!\nB (running)> Hi!\nA> What?\nWho?\n(leave)\nB> Wait!";
+        let mut parser = Parser::new(s);
+        assert_eq!(parser.next(), Some(PARA_START));
+
+        let (tokens, _) = EventTokener::read_paragraph(parser);
+        let mut speeches = Speeches::from_vec(tokens);
+        assert_eq!(speeches.next(), Some(vec![
+                Token::Text(TextToken::Text("A".to_owned())),
+                Token::Text(TextToken::Rangle),
+                Token::Text(TextToken::Text(" Hello!".to_owned())),
+                Token::Event(Event::SoftBreak),
         ]));
-    }
-
-    #[test]
-    fn end_of_terms() {
-        let s = "Simple Line";
-        let mut diag = make_dialogues(s);
-        let terms = parse_dialogues(diag.next().unwrap());
-        assert_eq!(terms, vec![Term::Text("Simple Line".to_owned())]);
-        assert_eq!(diag.next(), None);
-    }
-
-    #[test]
-    fn one_term() {
-        let s = "Hello!";
-        let mut lines = make_dialogues(s);
-        let terms = parse_dialogues(lines.next().unwrap());
-        assert_eq!(terms, vec![
-            Term::Text("Hello!".to_owned()),
-        ]);
+        assert_eq!(speeches.next(), Some(vec![
+                Token::Text(TextToken::Text("B ".to_owned())),
+                Token::Text(TextToken::Left),
+                Token::Text(TextToken::Text("running".to_owned())),
+                Token::Text(TextToken::Right),
+                Token::Text(TextToken::Rangle),
+                Token::Text(TextToken::Text(" Hi!".to_owned())),
+                Token::Event(Event::SoftBreak),
+        ]));
+        assert_eq!(speeches.next(), Some(vec![
+                Token::Text(TextToken::Text("A".to_owned())),
+                Token::Text(TextToken::Rangle),
+                Token::Text(TextToken::Text(" What?".to_owned())),
+                Token::Event(Event::SoftBreak),
+                Token::Text(TextToken::Text("Who?".to_owned())),
+                Token::Event(Event::SoftBreak),
+                Token::Text(TextToken::Left),
+                Token::Text(TextToken::Text("leave".to_owned())),
+                Token::Text(TextToken::Right),
+                Token::Event(Event::SoftBreak),
+        ]));
+        assert_eq!(speeches.next(), Some(vec![
+                Token::Text(TextToken::Text("B".to_owned())),
+                Token::Text(TextToken::Rangle),
+                Token::Text(TextToken::Text(" Wait!".to_owned())),
+        ]));
     }
 
     #[test]
     fn speech_with_only_character_name() {
         let s = "Young Syrian>";
 
-        let mut lines = make_dialogues(s);
-        assert_eq!(lines.next(), Some(vec![
+        let mut parser = Parser::new(s);
+        assert_eq!(parser.next(), Some(PARA_START));
+        let tokens: Vec<Token<'_>> = EventTokener::new(parser).collect();
+        assert_eq!(tokens, vec![
+            Token::Text(TextToken::Text("Young Syrian".to_owned())),
+            Token::Text(TextToken::Rangle),
+        ]);
+
+        let mut speeches = Speeches::from_vec(tokens);
+
+        let speech = speeches.next().unwrap();
+        assert_eq!(speech, vec![
                 Token::Text(TextToken::Text("Young Syrian".to_owned())),
                 Token::Text(TextToken::Rangle),
-        ]));
+        ]);
 
-        let mut lines = make_dialogues(s);
-        let terms = parse_dialogues(lines.next().unwrap());
+        let terms = parse_speech(speech);
         assert_eq!(terms, vec![
+            Term::HeadingStart,
             Term::Character("Young Syrian".to_owned()),
+            Term::HeadingEnd,
         ]);
 
         let events = distil(terms);
@@ -703,15 +788,22 @@ A> What? (__Turning (x)__)"#;
 
     #[test]
     fn character_with_direction() {
-        let s = "A> (Running) Hello!";
-        let mut lines = make_dialogues(s);
-        let terms = parse_dialogues(lines.next().unwrap());
+        let s = "A (Running)> Hello!";
+
+        let mut parser = Parser::new(s);
+        assert_eq!(parser.next(), Some(PARA_START));
+        let tokens: Vec<Token<'_>> = EventTokener::new(parser).collect();
+        let mut speeches = Speeches::from_vec(tokens);
+        let speech = speeches.next().unwrap();
+
+        let terms = parse_speech(speech);
         assert_eq!(terms, vec![
-            Term::Character("A".to_owned()),
-            Term::Text(" ".to_owned()),
+            Term::HeadingStart,
+            Term::Character("A ".to_owned()),
             Term::DirectionStart,
             Term::Text("Running".to_owned()),
             Term::DirectionEnd,
+            Term::HeadingEnd,
             Term::Text(" Hello!".to_owned()),
         ]);
     }
@@ -719,10 +811,15 @@ A> What? (__Turning (x)__)"#;
     #[test]
     fn with_code_in_direction() {
         let s = "A> (Writing `x`) What?";
-        let mut lines = make_dialogues(s);
-        let terms = parse_dialogues(lines.next().unwrap());
+        let mut parser = Parser::new(s);
+        assert_eq!(parser.next(), Some(PARA_START));
+        let (para, _) = EventTokener::read_paragraph(parser);
+        let mut speeches = Speeches::from_vec(para);
+        let terms = parse_speech(speeches.next().unwrap());
         assert_eq!(terms, vec![
+            Term::HeadingStart,
             Term::Character("A".to_owned()),
+            Term::HeadingEnd,
             Term::Text(" ".to_owned()),
             Term::DirectionStart,
             Term::Text("Writing ".to_owned()),
@@ -735,10 +832,15 @@ A> What? (__Turning (x)__)"#;
     #[test]
     fn with_em_in_direction() {
         let s = "A> (Writing *x*) What?";
-        let mut lines = make_dialogues(s);
-        let terms = parse_dialogues(lines.next().unwrap());
+        let mut parser = Parser::new(s);
+        assert_eq!(parser.next(), Some(PARA_START));
+        let (para, _) = EventTokener::read_paragraph(parser);
+        let mut speeches = Speeches::from_vec(para);
+        let terms = parse_speech(speeches.next().unwrap());
         assert_eq!(terms, vec![
+            Term::HeadingStart,
             Term::Character("A".to_owned()),
+            Term::HeadingEnd,
             Term::Text(" ".to_owned()),
             Term::DirectionStart,
             Term::Text("Writing ".to_owned()),
@@ -751,13 +853,16 @@ A> What? (__Turning (x)__)"#;
     }
 
     #[test]
-    fn multiple_dialogues() {
+    fn multiple_speeches() {
         let s = r#"A> Hello!
 ( Turning to audience )
 B> Bye!
 A> What? (__Turning (x)__)  "#;
-        let mut lines = make_dialogues(s);
-        let events = distil(parse_dialogues(lines.next().unwrap()));
+        let mut parser = Parser::new(s);
+        assert_eq!(parser.next(), Some(PARA_START));
+        let (paragraph, _) = EventTokener::read_paragraph(parser);
+        let mut speeches = Speeches::from_vec(paragraph);
+        let events = distil(parse_speech(speeches.next().unwrap()));
         assert_eq!(events, vec![
             DIV_SPEECH,
             H6_START,
@@ -776,12 +881,12 @@ A> What? (__Turning (x)__)  "#;
             DIV_END,
             Event::SoftBreak,
         ]);
-        let events = distil(parse_dialogues(lines.next().unwrap()));
+        let events = distil(parse_speech(speeches.next().unwrap()));
         assert_eq!(events, vec![
             DIV_SPEECH,
             H6_START,
             SPAN_CHARACTER,
-            Event::Text("A".into()),
+            Event::Text("B".into()),
             SPAN_END,
             H6_END,
             PARA_START,
@@ -791,7 +896,7 @@ A> What? (__Turning (x)__)  "#;
             DIV_END,
             Event::SoftBreak,
         ]);
-        let events = distil(parse_dialogues(lines.next().unwrap()));
+        let events = distil(parse_speech(speeches.next().unwrap()));
         assert_eq!(events, vec![
             DIV_SPEECH,
             H6_START,
@@ -810,43 +915,29 @@ A> What? (__Turning (x)__)  "#;
             DIV_END,
             Event::SoftBreak,
         ]);
-
-        let parser = lines.into_inner();
-        let mut parser = parser.into_inner();
-        assert_eq!(parser.next(), None);
-    }
-
-    #[test]
-    fn parse_multiple_paragraphs() {
-        let s = r#"A> Hello!
-B> Hello!
-
-Independent Paragraph"#;
-        let mut lines = make_dialogues(s);
-        let _a_hello = distil(parse_dialogues(lines.next().unwrap()));
-        let _b_hello = distil(parse_dialogues(lines.next().unwrap()));
-        let parser = lines.into_inner();
-        let mut parser = parser.into_inner();
-        assert_eq!(parser.next(), Some(PARA_START));
-    }
-
-    #[test]
-    fn multiple_paragraphs_dialogues_end() {
-        let s = r#"A> Hello!
-B> Hello!
-
-Independent Paragraph"#;
-        let mut lines = make_dialogues(s);
-        let _a_hello = distil(parse_dialogues(lines.next().unwrap()));
-        let _b_hello = distil(parse_dialogues(lines.next().unwrap()));
-        assert_eq!(lines.next(), None);
     }
 
     #[test]
     fn heading_with_direction() {
-        let s = "A> (Running) Hello!";
-        let mut lines = make_dialogues(s);
-        let events = distil(parse_dialogues(lines.next().unwrap()));
+        let s = "A (Running)> Hello!";
+
+        let mut parser = Parser::new(s);
+        assert_eq!(parser.next(), Some(PARA_START));
+        let (tokens, _) = EventTokener::read_paragraph(parser);
+        let mut speeches = Speeches::from_vec(tokens);
+
+        let speech = speeches.next().unwrap();
+
+        assert_eq!(speech, vec![
+            Token::Text(TextToken::Text("A ".into())),
+            Token::Text(TextToken::Left),
+            Token::Text(TextToken::Text("Running".into())),
+            Token::Text(TextToken::Right),
+            Token::Text(TextToken::Rangle),
+            Token::Text(TextToken::Text(" Hello!".into())),
+        ]);
+
+        let events = distil(parse_speech(speech));
         assert_eq!(events, vec![
             DIV_SPEECH,
             H6_START,
@@ -868,8 +959,15 @@ Independent Paragraph"#;
     #[test]
     fn heading_without_direction() {
         let s = "A> Hello!";
-        let mut lines = make_dialogues(s);
-        let events = distil(parse_dialogues(lines.next().unwrap()));
+
+        let mut parser = Parser::new(s);
+        assert_eq!(parser.next(), Some(PARA_START));
+
+        let (tokens, _) = EventTokener::read_paragraph(parser);
+        let mut speeches = Speeches::from_vec(tokens);
+        let speech = speeches.next().unwrap();
+
+        let events = distil(parse_speech(speech));
         assert_eq!(events, vec![
             DIV_SPEECH,
             H6_START,
@@ -888,8 +986,15 @@ Independent Paragraph"#;
     #[test]
     fn heading_with_normal_line() {
         let s = "Hello!";
-        let mut lines = make_dialogues(s);
-        let events = distil(parse_dialogues(lines.next().unwrap()));
+
+        let mut parser = Parser::new(s);
+        assert_eq!(parser.next(), Some(PARA_START));
+
+        let (tokens, _) = EventTokener::read_paragraph(parser);
+        let mut speeches = Speeches::from_vec(tokens);
+        let speech = speeches.next().unwrap();
+
+        let events = distil(parse_speech(speech));
         assert_eq!(events, vec![
             Event::Start(Tag::Paragraph),
             Event::Text("Hello!".into()),
