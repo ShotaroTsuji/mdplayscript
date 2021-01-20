@@ -59,8 +59,8 @@ where
 
 const PARA_START: Event<'static> = Event::Start(Tag::Paragraph);
 const PARA_END: Event<'static> = Event::End(Tag::Paragraph);
-const H6_START: Event<'static> = Event::Start(Tag::Heading(6));
-const H6_END: Event<'static> = Event::End(Tag::Heading(6));
+const H5_START: Event<'static> = Event::Html(CowStr::Borrowed("<h5>"));
+const H5_END: Event<'static> = Event::Html(CowStr::Borrowed("</h5>"));
 const DIV_SPEECH: Event<'static> = Event::Html(CowStr::Borrowed(r#"<div class="speech">"#));
 const DIV_END: Event<'static> = Event::Html(CowStr::Borrowed("</div>"));
 const SPAN_CHARACTER: Event<'static> = Event::Html(CowStr::Borrowed(r#"<span class="character">"#));
@@ -90,11 +90,11 @@ fn distil_speech<'a>(terms: Vec<Term<'a>>) -> Vec<Event<'a>> {
     while let Some(term) = terms.next() {
         match term {
             Term::HeadingStart => {
-                events.push(H6_START.clone());
+                events.push(H5_START.clone());
                 trim_start = false;
             },
             Term::HeadingEnd => {
-                events.push(H6_END.clone());
+                events.push(H5_END.clone());
                 events.push(PARA_START.clone());
                 trim_start = true;
             },
@@ -772,11 +772,11 @@ Third"#;
         let events = distil(terms);
         assert_eq!(events, vec![
             DIV_SPEECH,
-            H6_START,
+            H5_START,
             SPAN_CHARACTER,
             Event::Text("Young Syrian".into()),
             SPAN_END,
-            H6_END,
+            H5_END,
             PARA_START,
             PARA_END,
             DIV_END,
@@ -863,11 +863,11 @@ A> What? (__Turning (x)__)  "#;
         let events = distil(parse_speech(speeches.next().unwrap()));
         assert_eq!(events, vec![
             DIV_SPEECH,
-            H6_START,
+            H5_START,
             SPAN_CHARACTER,
             Event::Text("A".into()),
             SPAN_END,
-            H6_END,
+            H5_END,
             PARA_START,
             Event::Text("Hello!".into()),
             Event::SoftBreak,
@@ -882,11 +882,11 @@ A> What? (__Turning (x)__)  "#;
         let events = distil(parse_speech(speeches.next().unwrap()));
         assert_eq!(events, vec![
             DIV_SPEECH,
-            H6_START,
+            H5_START,
             SPAN_CHARACTER,
             Event::Text("B".into()),
             SPAN_END,
-            H6_END,
+            H5_END,
             PARA_START,
             Event::Text("Bye!".into()),
             Event::SoftBreak,
@@ -897,11 +897,11 @@ A> What? (__Turning (x)__)  "#;
         let events = distil(parse_speech(speeches.next().unwrap()));
         assert_eq!(events, vec![
             DIV_SPEECH,
-            H6_START,
+            H5_START,
             SPAN_CHARACTER,
             Event::Text("A".into()),
             SPAN_END,
-            H6_END,
+            H5_END,
             PARA_START,
             Event::Text("What?".into()),
             SPAN_DIRECTION,
@@ -938,14 +938,14 @@ A> What? (__Turning (x)__)  "#;
         let events = distil(parse_speech(speech));
         assert_eq!(events, vec![
             DIV_SPEECH,
-            H6_START,
+            H5_START,
             SPAN_CHARACTER,
             Event::Text("A".into()),
             SPAN_END,
             SPAN_DIRECTION,
             Event::Text("Running".into()),
             SPAN_END,
-            H6_END,
+            H5_END,
             PARA_START,
             Event::Text("Hello!".into()),
             PARA_END,
@@ -968,11 +968,11 @@ A> What? (__Turning (x)__)  "#;
         let events = distil(parse_speech(speech));
         assert_eq!(events, vec![
             DIV_SPEECH,
-            H6_START,
+            H5_START,
             SPAN_CHARACTER,
             Event::Text("A".into()),
             SPAN_END,
-            H6_END,
+            H5_END,
             PARA_START,
             Event::Text("Hello!".into()),
             PARA_END,
