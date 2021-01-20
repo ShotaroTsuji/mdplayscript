@@ -21,7 +21,7 @@ h1, h2, h3, h4 {
 
 span.character {
 	font-style: normal;
-	font-variant-caps: small-caps;
+	text-transform: uppercase;
 }
 
 div.play h3 {
@@ -45,6 +45,7 @@ div.speech > h5::after {
 }
 
 div.speech > h5 > span.character {
+	text-transform: none;
 	font-family: sans-serif;
 	font-weight: bold;
 	font-variant-caps: small-caps;
