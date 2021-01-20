@@ -3,7 +3,7 @@ use std::fs::File;
 use std::io::Read;
 use structopt::StructOpt;
 use pulldown_cmark::Parser;
-use playmd::MdPlay;
+use mdplay::MdPlay;
 
 const HTML_PRELUDE: &'static str =
 r#"<html>

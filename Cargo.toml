@@ -1,5 +1,5 @@
 [package]
-name = "playmd"
+name = "mdplay"
 version = "0.1.0"
 authors = ["Shotaro Tsuji <Shotaro.Tsuji@gmail.com>"]
 edition = "2018"

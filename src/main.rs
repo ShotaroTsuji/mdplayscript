@@ -1,4 +1,4 @@
-use playmd::MdPlay;
+use mdplay::MdPlay;
 use pulldown_cmark::Parser;
 
 const SAMPLE: &'static str = r#"
