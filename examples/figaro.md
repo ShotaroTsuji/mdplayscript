@@ -64,16 +64,10 @@ Suzanne> Voilà madame éveillée ; elle m'a bien recommandé d'être la premiè
 Figaro> Y a-t-il encore quelque chose là-dessous ?
 Suzanne> Le berger dit que cela porte bonheur aux épouses délaissées. Adieu, mon petit fi, fi, Figaro ; rêve à notre affaire.
 Figaro> Pour m'ouvrir l'esprit, donne un petit baiser.
-Suzanne> À mon amant aujourd'hui ? Je t'en souhaite ! Et qu'en dirait demain mon mari ?
-
-(Figaro l'embrasse.)
-
+Suzanne> À mon amant aujourd'hui ? Je t'en souhaite ! Et qu'en dirait demain mon mari ? (Figaro l'embrasse.)
 Suzanne> Eh bien ! eh bien !
 Figaro> C'est que tu n'as pas d'idée de mon amour.
 Suzanne (se défripant)> Quand cesserez-vous, importun, de m'en parler du matin au soir ?
-Figaro (mystérieusement)> Quand je pourrai te le prouver du soir jusqu'au matin.
-
-(On sonne une seconde fois.)
-
+Figaro (mystérieusement)> Quand je pourrai te le prouver du soir jusqu'au matin. (On sonne une seconde fois.)
 Suzanne (de loin, les doigts unis sur sa bouche)> Voilà votre baiser, monsieur ; je n'ai plus rien à vous.
 Figaro (court aprés elle)> Oh ! mais ce n'est pas ainsi que vous l'aves reçu.

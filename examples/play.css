@@ -82,7 +82,7 @@ div.speech > p > span.direction {
 }
 
 div.speech > p > span.direction {
-	font-style: normal;
+	font-style: italic;
 }
 
 div.speech > p > span.direction::before {
@@ -91,4 +91,8 @@ div.speech > p > span.direction::before {
 
 div.speech > p > span.direction::after {
 	content: ")";
+}
+
+div.speech > p > span.direction:last-child {
+	display: block;
 }
