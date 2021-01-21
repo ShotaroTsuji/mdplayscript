@@ -556,7 +556,7 @@ fn find_puncts_end(s: &str, p: char) -> (&str, &str) {
 
     for (index, c) in s.char_indices() {
         if c != p {
-            return (&s[..index], s[index..].trim_start());
+            return (&s[..index], &s[index..]);
         }
     }
 
@@ -572,11 +572,11 @@ mod test {
     fn puncts_end() {
         let p = '>';
         let s = "> BBB";
-        assert_eq!(find_puncts_end(s, p), (">", "BBB"));
+        assert_eq!(find_puncts_end(s, p), (">", " BBB"));
         let s = ">>> xxx";
-        assert_eq!(find_puncts_end(s, p), (">>>", "xxx"));
+        assert_eq!(find_puncts_end(s, p), (">>>", " xxx"));
         let s = "> Second>>";
-        assert_eq!(find_puncts_end(s, p), (">", "Second>>"));
+        assert_eq!(find_puncts_end(s, p), (">", " Second>>"));
         let s = ">>>>";
         assert_eq!(find_puncts_end(s, p), (s, ""));
     }
@@ -598,10 +598,11 @@ mod test {
         assert_eq!(token, vec![
             TextToken::Text("AAA".to_owned()),
             TextToken::Rangle,
-            TextToken::Text("xxx ".to_owned()),
+            TextToken::Text(" xxx ".to_owned()),
             TextToken::LeftBlock(2),
             TextToken::Text("yy".to_owned()),
             TextToken::RightBlock(2),
+            TextToken::Text(" ".to_owned()),
             TextToken::Left,
             TextToken::Text("ddd".to_owned()),
             TextToken::Right,
@@ -618,7 +619,7 @@ mod test {
         let mut parser = EventTokener::new(&mut parser);
         assert_eq!(parser.next(), Some(Token::Text(TextToken::Text("AAA".to_owned()))));
         assert_eq!(parser.next(), Some(Token::Text(TextToken::Rangle)));
-        assert_eq!(parser.next(), Some(Token::Text(TextToken::Text("xxx ".to_owned()))));
+        assert_eq!(parser.next(), Some(Token::Text(TextToken::Text(" xxx ".to_owned()))));
         assert_eq!(parser.next(), Some(Token::Text(TextToken::Left)));
         assert_eq!(parser.next(), Some(Token::Event(Event::Start(Tag::Emphasis))));
         assert_eq!(parser.next(), Some(Token::Event(Event::Text("E)M".into()))));
@@ -626,7 +627,7 @@ mod test {
         assert_eq!(parser.next(), Some(Token::Text(TextToken::LeftBlock(2))));
         assert_eq!(parser.next(), Some(Token::Text(TextToken::Text("yyy".to_owned()))));
         assert_eq!(parser.next(), Some(Token::Text(TextToken::RightBlock(2))));
-        assert_eq!(parser.next(), Some(Token::Text(TextToken::Text("zzz".to_owned()))));
+        assert_eq!(parser.next(), Some(Token::Text(TextToken::Text(" zzz".to_owned()))));
         assert_eq!(parser.next(), Some(Token::Text(TextToken::Right)));
         assert_eq!(parser.next(), Some(Token::Event(Event::SoftBreak)));
         assert_eq!(parser.next(), Some(Token::Text(TextToken::Text("xxx".to_owned()))));
@@ -646,7 +647,7 @@ mod test {
             Token::Text(TextToken::Text("aaa".to_owned())),
             Token::Text(TextToken::Right),
             Token::Text(TextToken::Rangle),
-            Token::Text(TextToken::Text("xxx".to_owned())),
+            Token::Text(TextToken::Text(" xxx".to_owned())),
         ]);
     }
 
@@ -710,7 +711,7 @@ Third"#;
         assert_eq!(speeches.next(), Some(vec![
                 Token::Text(TextToken::Text("A".to_owned())),
                 Token::Text(TextToken::Rangle),
-                Token::Text(TextToken::Text("Hello!".to_owned())),
+                Token::Text(TextToken::Text(" Hello!".to_owned())),
                 Token::Event(Event::SoftBreak),
         ]));
         assert_eq!(speeches.next(), Some(vec![
@@ -719,13 +720,13 @@ Third"#;
                 Token::Text(TextToken::Text("running".to_owned())),
                 Token::Text(TextToken::Right),
                 Token::Text(TextToken::Rangle),
-                Token::Text(TextToken::Text("Hi!".to_owned())),
+                Token::Text(TextToken::Text(" Hi!".to_owned())),
                 Token::Event(Event::SoftBreak),
         ]));
         assert_eq!(speeches.next(), Some(vec![
                 Token::Text(TextToken::Text("A".to_owned())),
                 Token::Text(TextToken::Rangle),
-                Token::Text(TextToken::Text("What?".to_owned())),
+                Token::Text(TextToken::Text(" What?".to_owned())),
                 Token::Event(Event::SoftBreak),
                 Token::Text(TextToken::Text("Who?".to_owned())),
                 Token::Event(Event::SoftBreak),
@@ -737,7 +738,7 @@ Third"#;
         assert_eq!(speeches.next(), Some(vec![
                 Token::Text(TextToken::Text("B".to_owned())),
                 Token::Text(TextToken::Rangle),
-                Token::Text(TextToken::Text("Wait!".to_owned())),
+                Token::Text(TextToken::Text(" Wait!".to_owned())),
         ]));
     }
 
@@ -785,7 +786,7 @@ Third"#;
 
     #[test]
     fn character_with_direction() {
-        let s = "A (Running) > Hello!";
+        let s = "A (Running)> Hello!";
 
         let mut parser = Parser::new(s);
         assert_eq!(parser.next(), Some(PARA_START));
@@ -801,7 +802,7 @@ Third"#;
             Term::Text("Running".to_owned()),
             Term::DirectionEnd,
             Term::HeadingEnd,
-            Term::Text("Hello!".to_owned()),
+            Term::Text(" Hello!".to_owned()),
         ]);
     }
 
@@ -817,11 +818,12 @@ Third"#;
             Term::HeadingStart,
             Term::Character("A".to_owned()),
             Term::HeadingEnd,
+            Term::Text(" ".to_owned()),
             Term::DirectionStart,
             Term::Text("Writing ".to_owned()),
             Term::Event(Event::Code("x".into())),
             Term::DirectionEnd,
-            Term::Text("What?".to_owned()),
+            Term::Text(" What?".to_owned()),
         ]);
     }
 
@@ -837,13 +839,14 @@ Third"#;
             Term::HeadingStart,
             Term::Character("A".to_owned()),
             Term::HeadingEnd,
+            Term::Text(" ".to_owned()),
             Term::DirectionStart,
             Term::Text("Writing ".to_owned()),
             Term::Event(Event::Start(Tag::Emphasis)),
             Term::Event(Event::Text("x".into())),
             Term::Event(Event::End(Tag::Emphasis)),
             Term::DirectionEnd,
-            Term::Text("What?".to_owned()),
+            Term::Text(" What?".to_owned()),
         ]);
     }
 
@@ -929,7 +932,7 @@ A> What? (__Turning (x)__)  "#;
             Token::Text(TextToken::Text("Running".into())),
             Token::Text(TextToken::Right),
             Token::Text(TextToken::Rangle),
-            Token::Text(TextToken::Text("Hello!".into())),
+            Token::Text(TextToken::Text(" Hello!".into())),
         ]);
 
         let events = distil(parse_speech(speech));
