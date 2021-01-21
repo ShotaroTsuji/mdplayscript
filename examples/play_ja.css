@@ -1,0 +1,94 @@
+body {
+	margin: auto;
+	max-width: 210mm;
+}
+
+div.play {
+	margin: auto;
+	padding-left: 4em;
+	padding-right: 2em;
+	max-width: 48rem;
+}
+
+p {
+	font-style: normal;
+	text-align: center;
+}
+
+h1, h2, h3 {
+	text-align: center;
+}
+
+span.character {
+	font-style: normal;
+	font-variant-caps: small-caps;
+}
+
+div.play h3 {
+	margin: 0;
+}
+
+div.speech {
+	text-indent: -2em;
+}
+
+div.speech > h5 {
+	display: inline;
+	font-style: normal;
+	font-weight: normal;
+	font-size: medium;
+	text-align: center;
+	padding-right: 1em;
+	margin: 0;
+}
+
+div.speech > h5 > span.character {
+	font-family: sans-serif;
+	font-weight: bold;
+	font-variant-caps: small-caps;
+}
+
+div.speech > h5 > span.direction::before {
+	content: ", ";
+}
+
+div.speech > h5 > span.direction {
+	font-style: italic;
+}
+
+/* p.speech + h5.speech { */
+div.speech > p + h5 {
+	margin-top: 1em;
+}
+
+div.speech > h5 + p {
+	margin-top: 0.5em;
+}
+
+div.speech > p {
+	display: inline;
+	font-style: normal;
+	text-indent: 2em;
+	text-align: left;
+	margin-bottom: 0.1em;
+}
+
+div.speech > p + p {
+	margin-top: 0;
+}
+
+div.speech > p > span.direction {
+	text-align: right;
+}
+
+div.speech > p > span.direction {
+	font-style: normal;
+}
+
+div.speech > p > span.direction::before {
+	content: "（";
+}
+
+div.speech > p > span.direction::after {
+	content: "）";
+}
