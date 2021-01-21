@@ -439,6 +439,7 @@ where
         }
     }
 
+    #[allow(dead_code)]
     fn into_inner(self) -> P {
         self.parser
     }
