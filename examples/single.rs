@@ -5,7 +5,7 @@ use structopt::StructOpt;
 use pulldown_cmark::Parser;
 use mdplay::MdPlay;
 
-fn html_prelude(lang: &str) -> String {
+fn html_prelude(title: &str, lang: &str) -> String {
     let cssfile = if lang == "ja" {
         "play_ja.css"
     } else {
@@ -15,12 +15,13 @@ fn html_prelude(lang: &str) -> String {
     format!(
 r#"<html>
 <head>
-  <title>Example of mdPlay</title>
+  <title>{title}</title>
   <meta charset="utf-8" />
   <link href="./{cssfile}" rel="stylesheet" />
 </head>
 <body>
 <div class="play">"#,
+    title=title,
     cssfile=cssfile
     )
 }
@@ -34,6 +35,8 @@ r#"</div>
 
 #[derive(Debug,StructOpt)]
 struct Opt {
+    #[structopt(long,short,default_value="Example of mdPlay")]
+    title: String,
     #[structopt(long,short,default_value="")]
     language: String,
     #[structopt(parse(from_os_str))]
@@ -65,7 +68,7 @@ fn main() {
     let text = read_file(&opt.input);
     let output = convert_play(&text);
 
-    println!("{}", html_prelude(&opt.language));
+    println!("{}", html_prelude(&opt.title, &opt.language));
     println!("{}", output);
     println!("{}", HTML_POSTLUDE);
 }
