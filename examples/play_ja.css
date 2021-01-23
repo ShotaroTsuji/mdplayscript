@@ -30,6 +30,7 @@ div.play h3 {
 
 div.speech {
 	text-indent: -2em;
+	line-height: 1.5;
 }
 
 div.speech > h5 {
@@ -56,14 +57,6 @@ div.speech > h5 > span.direction {
 	font-style: italic;
 }
 
-/* p.speech + h5.speech { */
-div.speech > p + h5 {
-	margin-top: 1em;
-}
-
-div.speech > h5 + p {
-	margin-top: 0.5em;
-}
 
 div.speech > p {
 	display: inline;
