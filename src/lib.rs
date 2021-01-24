@@ -80,6 +80,10 @@
 //! - [ ] Make a function like `mdbook build`.
 //! - [ ] Refactor test codes
 //!
+//! # License
+//!
+//! MIT License
+//!
 use std::marker::PhantomData;
 use std::collections::VecDeque;
 use pulldown_cmark::{Event, Tag, CowStr};
