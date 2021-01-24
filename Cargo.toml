@@ -4,15 +4,19 @@ version = "0.1.0"
 authors = ["Shotaro Tsuji <Shotaro.Tsuji@gmail.com>"]
 edition = "2018"
 license = "MIT"
+repository = "https://github.com/ShotaroTsuji/mdplayscript"
+description = "An extension of Markdown for play scripts"
+readme = "README.md"
+categoris = ["text-processing"]
+keywords = ["markdown", "pulldown-cmark", "play"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 pulldown-cmark = "0.8.0"
 trim-in-place = "0.1.5"
-eyre = "*"
+eyre = "0.6.5"
 
 [dev-dependencies]
 structopt = "0.3.21"
-serde_derive = "1.0.120"
 toml = "0.5.8"
