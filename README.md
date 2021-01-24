@@ -50,19 +50,13 @@ fn convert(s: &str) -> String {
 }
 
 assert_eq!(convert("A> Hello!"),
-r#"<div class="speech"><h5><span class="character">A</span></h5>
-<p>Hello!</p>
-</div>
+r#"<div class="speech"><h5><span class="character">A</span></h5><p>Hello!</p></div>
 "#);
 assert_eq!(convert("A> Hello! (some direction)"),
-r#"<div class="speech"><h5><span class="character">A</span></h5>
-<p>Hello!<span class="direction">some direction</span></p>
-</div>
+r#"<div class="speech"><h5><span class="character">A</span></h5><p>Hello!<span class="direction">some direction</span></p></div>
 "#);
 assert_eq!(convert("A (running)> Hello!"),
-r#"<div class="speech"><h5><span class="character">A</span><span class="direction">running</span></h5>
-<p>Hello!</p>
-</div>
+r#"<div class="speech"><h5><span class="character">A</span><span class="direction">running</span></h5><p>Hello!</p></div>
 "#);
 ```
 
