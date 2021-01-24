@@ -44,14 +44,14 @@ fn generate_examples() {
 
     SinglePageExample {
         input: "examples/figaro.md",
-        output: "examples/figaro.html",
+        output: "public/figaro.html",
         title: "Le Mariage de Figaro",
         lang: "",
     }.run();
 
     SinglePageExample {
         input: "examples/yushima.md",
-        output: "examples/yushima.html",
+        output: "public/yushima.html",
         title: "湯島の境内 - 泉鏡花",
         lang: "ja",
     }.run();
