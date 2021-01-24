@@ -70,10 +70,14 @@
 //! It converts a single Markdown into an HTML document.
 //! The generated document has a link element which specifies a style sheet `examples/play.css`.
 //! I prepared an example input file: `examples/figaro.md`.
+//! The output file is
+//! [`public/figaro.html`](https://shotarotsuji.github.io/mdplayscript/figaro.html).
 //!
 //! For Japanese play scripts, I prepared a style sheet `examples/play_ja.css`.
 //! If you pass `-l ja` option to `examples/single.rs`, it uses the style sheet
 //! `examples/play_ja.css`.
+//! The output file is
+//! [`public/yushima.html`](https://shotarotsuji.github.io/mdplayscript/yushima.html).
 //!
 //! # ToDo
 //!
