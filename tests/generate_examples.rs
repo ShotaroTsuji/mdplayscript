@@ -40,7 +40,7 @@ fn generate_examples() {
     let name = cargo_toml.get("package").unwrap()
         .get("name").unwrap()
         .as_str().unwrap();
-    assert_eq!(name, "mdplay");
+    assert_eq!(name, "mdplayscript");
 
     SinglePageExample {
         input: "examples/figaro.md",

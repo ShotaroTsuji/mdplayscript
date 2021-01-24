@@ -3,7 +3,7 @@ use std::fs::File;
 use std::io::Read;
 use structopt::StructOpt;
 use pulldown_cmark::Parser;
-use mdplay::MdPlay;
+use mdplayscript::MdPlayScript;
 
 fn html_prelude(title: &str, lang: &str) -> String {
     let cssfile = if lang == "ja" {
@@ -56,7 +56,7 @@ fn convert_play(text: &str) -> String {
     let mut output = String::new();
 
     let parser = Parser::new(&text);
-    let parser = MdPlay::new(parser);
+    let parser = MdPlayScript::new(parser);
     pulldown_cmark::html::push_html(&mut output, parser);
 
     output
