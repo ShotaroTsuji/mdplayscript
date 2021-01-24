@@ -1,13 +1,13 @@
 [package]
 name = "mdplayscript"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Shotaro Tsuji <Shotaro.Tsuji@gmail.com>"]
 edition = "2018"
 license = "MIT"
 repository = "https://github.com/ShotaroTsuji/mdplayscript"
 description = "An extension of Markdown for play scripts"
 readme = "README.md"
-categoris = ["text-processing"]
+categories = ["text-processing"]
 keywords = ["markdown", "pulldown-cmark", "play"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

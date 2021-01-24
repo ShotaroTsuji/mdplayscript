@@ -64,6 +64,7 @@ div.speech > p {
 	font-style: normal;
 	text-indent: 2em;
 	text-align: left;
+	margin: 0;
 }
 
 div.speech > p + p {

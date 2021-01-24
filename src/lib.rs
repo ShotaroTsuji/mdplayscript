@@ -48,19 +48,13 @@
 //! }
 //!
 //! assert_eq!(convert("A> Hello!"),
-//! r#"<div class="speech"><h5><span class="character">A</span></h5>
-//! <p>Hello!</p>
-//! </div>
+//! r#"<div class="speech"><h5><span class="character">A</span></h5><p>Hello!</p></div>
 //! "#);
 //! assert_eq!(convert("A> Hello! (some direction)"),
-//! r#"<div class="speech"><h5><span class="character">A</span></h5>
-//! <p>Hello!<span class="direction">some direction</span></p>
-//! </div>
+//! r#"<div class="speech"><h5><span class="character">A</span></h5><p>Hello!<span class="direction">some direction</span></p></div>
 //! "#);
 //! assert_eq!(convert("A (running)> Hello!"),
-//! r#"<div class="speech"><h5><span class="character">A</span><span class="direction">running</span></h5>
-//! <p>Hello!</p>
-//! </div>
+//! r#"<div class="speech"><h5><span class="character">A</span><span class="direction">running</span></h5><p>Hello!</p></div>
 //! "#);
 //! ```
 //!
@@ -147,8 +141,8 @@ where
     }
 }
 
-const PARA_START: Event<'static> = Event::Start(Tag::Paragraph);
-const PARA_END: Event<'static> = Event::End(Tag::Paragraph);
+const PARA_START: Event<'static> = Event::Html(CowStr::Borrowed("<p>"));
+const PARA_END: Event<'static> = Event::Html(CowStr::Borrowed("</p>"));
 const H5_START: Event<'static> = Event::Html(CowStr::Borrowed("<h5>"));
 const H5_END: Event<'static> = Event::Html(CowStr::Borrowed("</h5>"));
 const DIV_SPEECH: Event<'static> = Event::Html(CowStr::Borrowed(r#"<div class="speech">"#));
@@ -659,6 +653,8 @@ mod test {
     use pulldown_cmark::Parser;
     use super::*;
 
+    const PARA_TAG_START: Event<'static> = Event::Start(Tag::Paragraph);
+
     #[test]
     fn puncts_end() {
         let p = '>';
@@ -729,7 +725,7 @@ mod test {
     fn tokens_in_character_and_direction() {
         let s = "A (aaa)> xxx";
         let mut parser = Parser::new(s);
-        assert_eq!(parser.next(), Some(PARA_START));
+        assert_eq!(parser.next(), Some(PARA_TAG_START));
 
         let tokens: Vec<Token<'_>> = EventTokener::new(parser).collect();
         assert_eq!(tokens, vec![
@@ -750,21 +746,21 @@ Second
 
 Third"#;
         let mut parser = Parser::new(s);
-        assert_eq!(parser.next(), Some(PARA_START));
+        assert_eq!(parser.next(), Some(PARA_TAG_START));
 
         let mut tokener = EventTokener::new(parser);
         assert_eq!(tokener.next(), Some(Token::Text(TextToken::Text("First".to_owned()))));
         assert_eq!(tokener.next(), None);
 
         let mut parser = tokener.into_inner();
-        assert_eq!(parser.next(), Some(PARA_START));
+        assert_eq!(parser.next(), Some(PARA_TAG_START));
 
         let mut tokener = EventTokener::new(parser);
         assert_eq!(tokener.next(), Some(Token::Text(TextToken::Text("Second".to_owned()))));
         assert_eq!(tokener.next(), None);
 
         let mut parser = tokener.into_inner();
-        assert_eq!(parser.next(), Some(PARA_START));
+        assert_eq!(parser.next(), Some(PARA_TAG_START));
 
         let mut tokener = EventTokener::new(parser);
         assert_eq!(tokener.next(), Some(Token::Text(TextToken::Text("Third".to_owned()))));
@@ -776,7 +772,7 @@ Third"#;
 
     fn test_starts_with_speech_heading(s: &str, expected: Option<HeadingKind>) {
         let mut parser = Parser::new(s);
-        assert_eq!(parser.next(), Some(PARA_START));
+        assert_eq!(parser.next(), Some(PARA_TAG_START));
         let (tokens, mut parser) = EventTokener::read_paragraph(parser);
         assert_eq!(speech_heading_kind(&tokens), expected);
         assert_eq!(parser.next(), None);
@@ -795,7 +791,7 @@ Third"#;
     fn speeches_from_lines() {
         let s = "A> Hello!\nB (running)> Hi!\nA> What?\nWho?\n(leave)\nB> Wait!";
         let mut parser = Parser::new(s);
-        assert_eq!(parser.next(), Some(PARA_START));
+        assert_eq!(parser.next(), Some(PARA_TAG_START));
 
         let (tokens, _) = EventTokener::read_paragraph(parser);
         let mut speeches = Speeches::from_vec(tokens);
@@ -838,7 +834,7 @@ Third"#;
         let s = "Young Syrian>";
 
         let mut parser = Parser::new(s);
-        assert_eq!(parser.next(), Some(PARA_START));
+        assert_eq!(parser.next(), Some(PARA_TAG_START));
         let tokens: Vec<Token<'_>> = EventTokener::new(parser).collect();
         assert_eq!(tokens, vec![
             Token::Text(TextToken::Text("Young Syrian".to_owned())),
@@ -880,7 +876,7 @@ Third"#;
         let s = "A (Running)> Hello!";
 
         let mut parser = Parser::new(s);
-        assert_eq!(parser.next(), Some(PARA_START));
+        assert_eq!(parser.next(), Some(PARA_TAG_START));
         let tokens: Vec<Token<'_>> = EventTokener::new(parser).collect();
         let mut speeches = Speeches::from_vec(tokens);
         let speech = speeches.next().unwrap();
@@ -901,7 +897,7 @@ Third"#;
     fn with_code_in_direction() {
         let s = "A> (Writing `x`) What?";
         let mut parser = Parser::new(s);
-        assert_eq!(parser.next(), Some(PARA_START));
+        assert_eq!(parser.next(), Some(PARA_TAG_START));
         let (para, _) = EventTokener::read_paragraph(parser);
         let mut speeches = Speeches::from_vec(para);
         let terms = parse_speech(speeches.next().unwrap());
@@ -922,7 +918,7 @@ Third"#;
     fn with_em_in_direction() {
         let s = "A> (Writing *x*) What?";
         let mut parser = Parser::new(s);
-        assert_eq!(parser.next(), Some(PARA_START));
+        assert_eq!(parser.next(), Some(PARA_TAG_START));
         let (para, _) = EventTokener::read_paragraph(parser);
         let mut speeches = Speeches::from_vec(para);
         let terms = parse_speech(speeches.next().unwrap());
@@ -948,7 +944,7 @@ Third"#;
 B> Bye!
 A> What? (__Turning (x)__)  "#;
         let mut parser = Parser::new(s);
-        assert_eq!(parser.next(), Some(PARA_START));
+        assert_eq!(parser.next(), Some(PARA_TAG_START));
         let (paragraph, _) = EventTokener::read_paragraph(parser);
         let mut speeches = Speeches::from_vec(paragraph);
         let events = distil(parse_speech(speeches.next().unwrap()));
@@ -1011,7 +1007,7 @@ A> What? (__Turning (x)__)  "#;
         let s = "A (Running)> Hello!";
 
         let mut parser = Parser::new(s);
-        assert_eq!(parser.next(), Some(PARA_START));
+        assert_eq!(parser.next(), Some(PARA_TAG_START));
         let (tokens, _) = EventTokener::read_paragraph(parser);
         let mut speeches = Speeches::from_vec(tokens);
 
@@ -1050,7 +1046,7 @@ A> What? (__Turning (x)__)  "#;
         let s = "A> Hello!";
 
         let mut parser = Parser::new(s);
-        assert_eq!(parser.next(), Some(PARA_START));
+        assert_eq!(parser.next(), Some(PARA_TAG_START));
 
         let (tokens, _) = EventTokener::read_paragraph(parser);
         let mut speeches = Speeches::from_vec(tokens);
@@ -1077,7 +1073,7 @@ A> What? (__Turning (x)__)  "#;
         let s = "Hello!";
 
         let mut parser = Parser::new(s);
-        assert_eq!(parser.next(), Some(PARA_START));
+        assert_eq!(parser.next(), Some(PARA_TAG_START));
 
         let (tokens, _) = EventTokener::read_paragraph(parser);
         let mut speeches = Speeches::from_vec(tokens);
@@ -1085,9 +1081,9 @@ A> What? (__Turning (x)__)  "#;
 
         let events = distil(parse_speech(speech));
         assert_eq!(events, vec![
-            Event::Start(Tag::Paragraph),
+            PARA_START,
             Event::Text("Hello!".into()),
-            Event::End(Tag::Paragraph),
+            PARA_END,
         ]);
     }
 }
