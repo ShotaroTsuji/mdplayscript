@@ -16,7 +16,7 @@ keywords = ["markdown", "pulldown-cmark", "play"]
 pulldown-cmark = "0.8.0"
 trim-in-place = "0.1.5"
 eyre = "0.6.5"
+structopt = "0.3.21"
 
 [dev-dependencies]
-structopt = "0.3.21"
 toml = "0.5.8"
