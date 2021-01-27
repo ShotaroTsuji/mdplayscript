@@ -1,7 +1,9 @@
 use structopt::StructOpt;
+use pulldown_cmark::Parser;
+use pulldown_cmark_to_cmark::cmark;
 use mdplayscript::MdPlayScript;
 use mdbook::preprocess::{Preprocessor, PreprocessorContext, CmdPreprocessor};
-use mdbook::book::Book;
+use mdbook::book::{Book, BookItem, Chapter};
 
 #[derive(Debug,StructOpt)]
 enum Opt {
@@ -87,7 +89,23 @@ impl Preprocessor for PlayScriptPreprocessor {
         }
     }
 
-    fn run(&self, ctx: &PreprocessorContext, book: Book) -> mdbook::errors::Result<Book> {
+    fn run(&self, ctx: &PreprocessorContext, mut book: Book) -> mdbook::errors::Result<Book> {
+        book.for_each_mut(|book_item| {
+            match book_item {
+                BookItem::Chapter(chapter) => {
+                    let len = chapter.content.len();
+                    let mut content = String::new();
+                    std::mem::swap(&mut chapter.content, &mut content);
+
+                    let parser = MdPlayScript::new(Parser::new(&content));
+                    let mut processed = String::with_capacity(len + len/2);
+                    cmark(parser, &mut processed, None).unwrap();
+                    std::mem::swap(&mut chapter.content, &mut processed);
+                },
+                _ => {},
+            }
+        });
+
         Ok(book)
     }
 }

@@ -143,6 +143,8 @@ where
 
 const PARA_START: Event<'static> = Event::Html(CowStr::Borrowed("<p>"));
 const PARA_END: Event<'static> = Event::Html(CowStr::Borrowed("</p>"));
+const P_START: Event<'static> = Event::Start(Tag::Paragraph);
+const P_END: Event<'static> = Event::End(Tag::Paragraph);
 const H5_START: Event<'static> = Event::Html(CowStr::Borrowed("<h5>"));
 const H5_END: Event<'static> = Event::Html(CowStr::Borrowed("</h5>"));
 const DIV_SPEECH: Event<'static> = Event::Html(CowStr::Borrowed(r#"<div class="speech">"#));
@@ -227,7 +229,7 @@ fn distil<'a>(terms: Vec<Term<'a>>) -> Vec<Event<'a>> {
 
     let (mut events, mut close) = match terms.get(0) {
         Some(Term::HeadingStart) => return distil_speech(terms),
-        _ => (vec![PARA_START.clone()], vec![PARA_END.clone()]),
+        _ => (vec![P_START.clone()], vec![P_END.clone()]),
     };
 
     let mut trim_start = false;
@@ -1081,9 +1083,9 @@ A> What? (__Turning (x)__)  "#;
 
         let events = distil(parse_speech(speech));
         assert_eq!(events, vec![
-            PARA_START,
+            P_START,
             Event::Text("Hello!".into()),
-            PARA_END,
+            P_END,
         ]);
     }
 }
