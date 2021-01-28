@@ -20,6 +20,7 @@ eyre = "0.6.5"
 structopt = "0.3.21"
 mdbook = "0.4.6"
 serde_json = "1.0.59"
+rust-embed = { version = "5.9.0", features = ["interpolate-folder-path"] }
 
 [dev-dependencies]
 toml = "0.5.8"

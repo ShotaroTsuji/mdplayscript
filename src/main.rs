@@ -1,9 +1,11 @@
+use std::path::Path;
 use structopt::StructOpt;
+use rust_embed::RustEmbed;
 use pulldown_cmark::Parser;
 use pulldown_cmark_to_cmark::cmark;
 use mdplayscript::MdPlayScript;
 use mdbook::preprocess::{Preprocessor, PreprocessorContext, CmdPreprocessor};
-use mdbook::book::{Book, BookItem, Chapter};
+use mdbook::book::{Book, BookItem};
 
 #[derive(Debug,StructOpt)]
 enum Opt {
@@ -90,6 +92,8 @@ impl Preprocessor for PlayScriptPreprocessor {
     }
 
     fn run(&self, ctx: &PreprocessorContext, mut book: Book) -> mdbook::errors::Result<Book> {
+        copy_css(&ctx.root);
+
         book.for_each_mut(|book_item| {
             match book_item {
                 BookItem::Chapter(chapter) => {
@@ -108,4 +112,21 @@ impl Preprocessor for PlayScriptPreprocessor {
 
         Ok(book)
     }
+}
+
+#[derive(RustEmbed)]
+#[folder = "$CARGO_MANIFEST_DIR/public"]
+struct Asset;
+
+const CSS_FILE_NAME: &'static str = "mdplayscript.css";
+
+fn copy_css<P: AsRef<Path>>(root: P) {
+    let mut path = root.as_ref().to_path_buf();
+    assert!(path.exists(), "root directory does not exist");
+
+    path.push(CSS_FILE_NAME);
+
+    eprintln!("copy to {:?}", path);
+    let css = Asset::get(CSS_FILE_NAME).unwrap();
+    std::fs::write(&path, &css).unwrap();
 }
