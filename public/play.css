@@ -24,6 +24,14 @@ span.character {
 	text-transform: uppercase;
 }
 
+span.character + span.direction::before {
+	content: ", ";
+}
+
+span.character + span.direction {
+	font-style: italic;
+}
+
 div.play h3 {
 	margin: 0;
 }
@@ -45,18 +53,18 @@ div.speech > h5::after {
 	content: ".";
 }
 
-div.speech > h5 > span.character {
+div.speech > h5 span.character {
 	text-transform: none;
 	font-family: sans-serif;
 	font-weight: bold;
 	font-variant-caps: small-caps;
 }
 
-div.speech > h5 > span.direction::before {
+div.speech > h5 span.direction::before {
 	content: ", ";
 }
 
-div.speech > h5 > span.direction {
+div.speech > h5 span.direction {
 	font-style: italic;
 }
 
