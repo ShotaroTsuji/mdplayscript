@@ -87,11 +87,11 @@ div.speech > p > span.direction {
 }
 
 div.speech > p > span.direction::before {
-	content: "(";
+	content: " (";
 }
 
 div.speech > p > span.direction::after {
-	content: ")";
+	content: ") ";
 }
 
 div.speech > p > span.direction:last-child {

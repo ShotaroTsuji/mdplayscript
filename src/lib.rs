@@ -48,13 +48,13 @@
 //! }
 //!
 //! assert_eq!(convert("A> Hello!"),
-//! r#"<div class="speech"><h5><span class="character">A</span></h5><p>Hello!</p></div>
+//! r#"<div class="speech"><h5><span class="character">A</span></h5><p><span>Hello!</span></p></div>
 //! "#);
 //! assert_eq!(convert("A> Hello! (some direction)"),
-//! r#"<div class="speech"><h5><span class="character">A</span></h5><p>Hello!<span class="direction">some direction</span></p></div>
+//! r#"<div class="speech"><h5><span class="character">A</span></h5><p><span>Hello!</span><span class="direction">some direction</span></p></div>
 //! "#);
 //! assert_eq!(convert("A (running)> Hello!"),
-//! r#"<div class="speech"><h5><span class="character">A</span><span class="direction">running</span></h5><p>Hello!</p></div>
+//! r#"<div class="speech"><h5><span class="character">A</span><span class="direction">running</span></h5><p><span>Hello!</span></p></div>
 //! "#);
 //! assert_eq!(convert(r#"<!-- monologue-begin -->
 //! Monologue
@@ -62,7 +62,7 @@
 //! <!-- monologue-end -->
 //! "#),
 //! r#"<!-- monologue-begin -->
-//! <div class="speech"><p>Monologue
+//! <div class="speech"><p><span>Monologue</span>
 //! <span class="direction">direction</span></p></div>
 //! <!-- monologue-end -->
 //! "#);
@@ -202,6 +202,7 @@ const H5_START: Event<'static> = Event::Html(CowStr::Borrowed("<h5>"));
 const H5_END: Event<'static> = Event::Html(CowStr::Borrowed("</h5>"));
 const DIV_SPEECH: Event<'static> = Event::Html(CowStr::Borrowed(r#"<div class="speech">"#));
 const DIV_END: Event<'static> = Event::Html(CowStr::Borrowed("</div>"));
+const SPAN_START: Event<'static> = Event::Html(CowStr::Borrowed("<span>"));
 const SPAN_CHARACTER: Event<'static> = Event::Html(CowStr::Borrowed(r#"<span class="character">"#));
 const SPAN_DIRECTION: Event<'static> = Event::Html(CowStr::Borrowed(r#"<span class="direction">"#));
 const SPAN_END: Event<'static> = Event::Html(CowStr::Borrowed("</span>"));
@@ -212,6 +213,20 @@ fn trim_end_of_top<'a>(events: &mut Vec<Event<'a>>) {
             let mut s = s.into_string();
             TrimInPlace::trim_end_in_place(&mut s);
             events.push(Event::Text(s.into()));
+        },
+        Some(h @ Event::Html(_)) if h == SPAN_START || h == SPAN_END => {
+            match events.pop() {
+                Some(Event::Text(s)) => {
+                    let mut s = s.into_string();
+                    TrimInPlace::trim_end_in_place(&mut s);
+                    events.push(Event::Text(s.into()));
+                },
+                Some(e) => {
+                    events.push(e);
+                },
+                _ => {},
+            }
+            events.push(h);
         },
         Some(e) => {
             events.push(e);
@@ -225,16 +240,19 @@ fn distil_speech<'a>(terms: Vec<Term<'a>>) -> Vec<Event<'a>> {
     let mut terms = terms.into_iter();
 
     let mut trim_start = false;
+    let mut text_needs_span = true;
 
     while let Some(term) = terms.next() {
         match term {
             Term::HeadingStart => {
                 events.push(H5_START.clone());
                 trim_start = false;
+                text_needs_span = false;
             },
             Term::HeadingEnd => {
                 events.push(H5_END.clone());
                 trim_start = true;
+                text_needs_span = true;
             },
             Term::BodyStart => {
                 events.push(PARA_START.clone());
@@ -253,18 +271,28 @@ fn distil_speech<'a>(terms: Vec<Term<'a>>) -> Vec<Event<'a>> {
                 trim_end_of_top(&mut events);
                 events.push(SPAN_DIRECTION.clone());
                 trim_start = true;
+                text_needs_span = false;
             },
             Term::DirectionEnd => {
                 trim_end_of_top(&mut events);
                 events.push(SPAN_END.clone());
                 trim_start = true;
+                text_needs_span = true;
             },
             Term::Text(mut s) => {
                 if trim_start {
                     TrimInPlace::trim_start_in_place(&mut s);
                 }
                 if s.len() > 0 {
+                    if text_needs_span {
+                        events.push(SPAN_START.clone());
+                    }
+
                     events.push(Event::Text(s.into()));
+
+                    if text_needs_span {
+                        events.push(SPAN_END.clone());
+                    }
                 }
             },
             Term::Event(e) => {
@@ -1048,7 +1076,9 @@ A> What? (__Turning (x)__)  "#;
             SPAN_END,
             H5_END,
             PARA_START,
+            SPAN_START,
             Event::Text("Hello!".into()),
+            SPAN_END,
             Event::SoftBreak,
             SPAN_DIRECTION,
             Event::Text("Turning to audience".into()),
@@ -1067,7 +1097,9 @@ A> What? (__Turning (x)__)  "#;
             SPAN_END,
             H5_END,
             PARA_START,
+            SPAN_START,
             Event::Text("Bye!".into()),
+            SPAN_END,
             Event::SoftBreak,
             PARA_END,
             DIV_END,
@@ -1082,7 +1114,9 @@ A> What? (__Turning (x)__)  "#;
             SPAN_END,
             H5_END,
             PARA_START,
+            SPAN_START,
             Event::Text("What?".into()),
+            SPAN_END,
             SPAN_DIRECTION,
             Event::Start(Tag::Strong),
             Event::Text("Turning (x)".into()),
@@ -1126,7 +1160,9 @@ A> What? (__Turning (x)__)  "#;
             SPAN_END,
             H5_END,
             PARA_START,
+            SPAN_START,
             Event::Text("Hello!".into()),
+            SPAN_END,
             PARA_END,
             DIV_END,
             Event::SoftBreak,
@@ -1153,7 +1189,9 @@ A> What? (__Turning (x)__)  "#;
             SPAN_END,
             H5_END,
             PARA_START,
+            SPAN_START,
             Event::Text("Hello!".into()),
+            SPAN_END,
             PARA_END,
             DIV_END,
             Event::SoftBreak,
@@ -1220,7 +1258,9 @@ Monologue (direction) Monologue
         assert_eq!(events, vec![
             DIV_SPEECH,
             PARA_START,
+            SPAN_START,
             Event::Text(CowStr::Borrowed("Monologue 1")),
+            SPAN_END,
             SPAN_DIRECTION,
             Event::Text(CowStr::Borrowed("direction")),
             SPAN_END,
@@ -1239,11 +1279,15 @@ Monologue (direction) Monologue
         assert_eq!(events, vec![
             DIV_SPEECH,
             PARA_START,
+            SPAN_START,
             Event::Text(CowStr::Borrowed("Monologue")),
+            SPAN_END,
             SPAN_DIRECTION,
             Event::Text(CowStr::Borrowed("direction")),
             SPAN_END,
+            SPAN_START,
             Event::Text(CowStr::Borrowed("Monologue")),
+            SPAN_END,
             PARA_END,
             DIV_END,
             Event::SoftBreak,
