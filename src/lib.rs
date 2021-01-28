@@ -56,6 +56,16 @@
 //! assert_eq!(convert("A (running)> Hello!"),
 //! r#"<div class="speech"><h5><span class="character">A</span><span class="direction">running</span></h5><p>Hello!</p></div>
 //! "#);
+//! assert_eq!(convert(r#"<!-- monologue-begin -->
+//! Monologue
+//! (direction)
+//! <!-- monologue-end -->
+//! "#),
+//! r#"<!-- monologue-begin -->
+//! <div class="speech"><p>Monologue
+//! <span class="direction">direction</span></p></div>
+//! <!-- monologue-end -->
+//! "#);
 //! ```
 //!
 //! ## CLI program
@@ -90,6 +100,7 @@ use trim_in_place::TrimInPlace;
 pub struct MdPlayScript<'a, P> {
     parser: Option<P>,
     queue: VecDeque<Event<'a>>,
+    is_in_monologue: bool,
     _marker: PhantomData<&'a P>,
 }
 
@@ -101,6 +112,7 @@ where
         Self {
             parser: Some(parser),
             queue: VecDeque::new(),
+            is_in_monologue: false,
             _marker: PhantomData,
         }
     }
@@ -125,7 +137,11 @@ where
                 let mut speeches = Speeches::from_vec(tokener);
 
                 while let Some(speech) = speeches.next() {
-                    let events = distil(parse_speech(speech));
+                    let events = if self.is_in_monologue {
+                        distil_monologue(parse_monologue(speech))
+                    } else {
+                        distil(parse_speech(speech))
+                    };
                     for e in events.into_iter() {
                         self.queue.push_back(e);
                     }
@@ -135,10 +151,47 @@ where
 
                 self.queue.pop_front()
             },
+            Some(html @ Event::Html(_)) => {
+                match is_monologue_directive(&html) {
+                    Some(MonologueDirective::Begin) => {
+                        self.is_in_monologue = true;
+                    },
+                    Some(MonologueDirective::End) => {
+                        self.is_in_monologue = false;
+                    },
+                    None => {},
+                }
+
+                Some(html)
+            },
             Some(event) => Some(event),
             None => None,
         }
     }
+}
+
+#[derive(Debug,Clone,PartialEq)]
+enum MonologueDirective {
+    Begin,
+    End,
+}
+
+fn is_monologue_directive<'a>(event: &Event<'a>) -> Option<MonologueDirective> {
+    let s = match event {
+        Event::Html(s) => s.as_ref(),
+        _ => return None,
+    };
+
+    let s = s.replace("<!--", "");
+    let s = s.trim_start();
+
+    if s.starts_with("monologue-begin") {
+        return Some(MonologueDirective::Begin);
+    } else if s.starts_with("monologue-end") {
+        return Some(MonologueDirective::End);
+    }
+
+    None
 }
 
 const PARA_START: Event<'static> = Event::Html(CowStr::Borrowed("<p>"));
@@ -181,8 +234,13 @@ fn distil_speech<'a>(terms: Vec<Term<'a>>) -> Vec<Event<'a>> {
             },
             Term::HeadingEnd => {
                 events.push(H5_END.clone());
-                events.push(PARA_START.clone());
                 trim_start = true;
+            },
+            Term::BodyStart => {
+                events.push(PARA_START.clone());
+            },
+            Term::BodyEnd => {
+                events.push(PARA_END.clone());
             },
             Term::Character(mut s) => {
                 TrimInPlace::trim_in_place(&mut s);
@@ -215,12 +273,20 @@ fn distil_speech<'a>(terms: Vec<Term<'a>>) -> Vec<Event<'a>> {
         }
     }
 
-    events.push(PARA_END.clone());
     events.push(DIV_END.clone());
     events.push(Event::SoftBreak);
 
     events
 }
+
+fn distil_monologue<'a>(terms: Vec<Term<'a>>) -> Vec<Event<'a>> {
+    if terms.len() == 0 {
+        Vec::new()
+    } else {
+        distil_speech(terms)
+    }
+}
+
 
 fn distil<'a>(terms: Vec<Term<'a>>) -> Vec<Event<'a>> {
     if terms.len() == 0 {
@@ -236,8 +302,8 @@ fn distil<'a>(terms: Vec<Term<'a>>) -> Vec<Event<'a>> {
 
     for term in terms.into_iter() {
         match term {
-            Term::HeadingStart |
-            Term::HeadingEnd |
+            Term::HeadingStart | Term::HeadingEnd |
+                Term::BodyStart | Term::BodyEnd |
             Term::Character(_) => unreachable!(),
             Term::Text(mut text) => {
                 if trim_start {
@@ -274,6 +340,8 @@ fn distil<'a>(terms: Vec<Term<'a>>) -> Vec<Event<'a>> {
 enum Term<'a> {
     HeadingStart,
     HeadingEnd,
+    BodyStart,
+    BodyEnd,
     DirectionStart,
     DirectionEnd,
     Character(String),
@@ -326,22 +394,36 @@ fn parse_direction_in_speech<'a>(line: &mut VecDeque<Token<'a>>, terms: &mut Vec
     }
 }
 
-fn parse_speech_line<'a>(line: Vec<Token<'a>>) -> Vec<Term<'a>> {
-    let mut terms = Vec::new();
-    let mut line: VecDeque<_> = line.into();
-
-    parse_speech_heading(&mut line, &mut terms);
-
+fn parse_speech_body<'a>(line: &mut VecDeque<Token<'a>>, terms: &mut Vec<Term<'a>>) {
+    terms.push(Term::BodyStart);
     while let Some(token) = line.pop_front() {
         match token {
             Token::Text(TextToken::Left) => {
-                parse_direction_in_speech(&mut line, &mut terms);
+                parse_direction_in_speech(line, terms);
             },
             t => {
                 terms.push(token_to_term(t, true));
             },
         }
     }
+    terms.push(Term::BodyEnd);
+}
+
+fn parse_speech_line<'a>(line: Vec<Token<'a>>) -> Vec<Term<'a>> {
+    let mut terms = Vec::new();
+    let mut line: VecDeque<_> = line.into();
+
+    parse_speech_heading(&mut line, &mut terms);
+    parse_speech_body(&mut line, &mut terms);
+
+    terms
+}
+
+fn parse_monologue<'a>(line: Vec<Token<'a>>) -> Vec<Term<'a>> {
+    let mut terms = vec![];
+    let mut line: VecDeque<_> = line.into();
+
+    parse_speech_body(&mut line, &mut terms);
 
     terms
 }
@@ -856,6 +938,8 @@ Third"#;
             Term::HeadingStart,
             Term::Character("Young Syrian".to_owned()),
             Term::HeadingEnd,
+            Term::BodyStart,
+            Term::BodyEnd,
         ]);
 
         let events = distil(terms);
@@ -891,7 +975,9 @@ Third"#;
             Term::Text("Running".to_owned()),
             Term::DirectionEnd,
             Term::HeadingEnd,
+            Term::BodyStart,
             Term::Text(" Hello!".to_owned()),
+            Term::BodyEnd,
         ]);
     }
 
@@ -907,12 +993,14 @@ Third"#;
             Term::HeadingStart,
             Term::Character("A".to_owned()),
             Term::HeadingEnd,
+            Term::BodyStart,
             Term::Text(" ".to_owned()),
             Term::DirectionStart,
             Term::Text("Writing ".to_owned()),
             Term::Event(Event::Code("x".into())),
             Term::DirectionEnd,
             Term::Text(" What?".to_owned()),
+            Term::BodyEnd,
         ]);
     }
 
@@ -928,6 +1016,7 @@ Third"#;
             Term::HeadingStart,
             Term::Character("A".to_owned()),
             Term::HeadingEnd,
+            Term::BodyStart,
             Term::Text(" ".to_owned()),
             Term::DirectionStart,
             Term::Text("Writing ".to_owned()),
@@ -936,6 +1025,7 @@ Third"#;
             Term::Event(Event::End(Tag::Emphasis)),
             Term::DirectionEnd,
             Term::Text(" What?".to_owned()),
+            Term::BodyEnd,
         ]);
     }
 
@@ -1087,5 +1177,79 @@ A> What? (__Turning (x)__)  "#;
             Event::Text("Hello!".into()),
             P_END,
         ]);
+    }
+
+    #[test]
+    fn monologue_begin_directive() {
+        let s = "<!-- monologue-begin -->";
+
+        let mut parser = Parser::new(s);
+        let event = parser.next().unwrap();
+        assert_eq!(is_monologue_directive(&event), Some(MonologueDirective::Begin));
+    }
+
+    #[test]
+    fn monologue_end_directive() {
+        let s = "<!-- monologue-end -->";
+
+        let mut parser = Parser::new(s);
+        let event = parser.next().unwrap();
+        assert_eq!(is_monologue_directive(&event), Some(MonologueDirective::End));
+    }
+
+    #[test]
+    fn monologue_example() {
+        let s = r#"<!-- monologue-begin -->
+Monologue 1 ( direction )
+
+Monologue (direction) Monologue
+<!-- monologue-end -->
+"#;
+
+        let mut parser = Parser::new(s);
+        let begin = parser.next().unwrap();
+        assert_eq!(is_monologue_directive(&begin), Some(MonologueDirective::Begin));
+
+        assert_eq!(parser.next(), Some(PARA_TAG_START));
+
+        let (tokens, parser) = EventTokener::read_paragraph(&mut parser);
+        let mut speeches = Speeches::from_vec(tokens);
+        let speech = speeches.next().unwrap();
+
+        let events = distil_monologue(parse_monologue(speech));
+        assert_eq!(events, vec![
+            DIV_SPEECH,
+            PARA_START,
+            Event::Text(CowStr::Borrowed("Monologue 1")),
+            SPAN_DIRECTION,
+            Event::Text(CowStr::Borrowed("direction")),
+            SPAN_END,
+            PARA_END,
+            DIV_END,
+            Event::SoftBreak,
+        ]);
+
+        assert_eq!(parser.next(), Some(PARA_TAG_START));
+
+        let (tokens, parser) = EventTokener::read_paragraph(parser);
+        let mut speeches = Speeches::from_vec(tokens);
+        let speech = speeches.next().unwrap();
+
+        let events = distil_monologue(parse_monologue(speech));
+        assert_eq!(events, vec![
+            DIV_SPEECH,
+            PARA_START,
+            Event::Text(CowStr::Borrowed("Monologue")),
+            SPAN_DIRECTION,
+            Event::Text(CowStr::Borrowed("direction")),
+            SPAN_END,
+            Event::Text(CowStr::Borrowed("Monologue")),
+            PARA_END,
+            DIV_END,
+            Event::SoftBreak,
+        ]);
+
+        let end = parser.next().unwrap();
+        assert_eq!(is_monologue_directive(&end), Some(MonologueDirective::End));
     }
 }
