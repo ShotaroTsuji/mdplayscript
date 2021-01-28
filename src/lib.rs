@@ -270,7 +270,7 @@ fn distil_speech<'a>(terms: Vec<Term<'a>>) -> Vec<Event<'a>> {
             Term::DirectionStart => {
                 trim_end_of_top(&mut events);
                 events.push(SPAN_DIRECTION.clone());
-                trim_start = true;
+                trim_start = false;
                 text_needs_span = false;
             },
             Term::DirectionEnd => {
@@ -1081,7 +1081,7 @@ A> What? (__Turning (x)__)  "#;
             SPAN_END,
             Event::SoftBreak,
             SPAN_DIRECTION,
-            Event::Text("Turning to audience".into()),
+            Event::Text(" Turning to audience".into()),
             SPAN_END,
             Event::SoftBreak,
             PARA_END,
@@ -1262,7 +1262,7 @@ Monologue (direction) Monologue
             Event::Text(CowStr::Borrowed("Monologue 1")),
             SPAN_END,
             SPAN_DIRECTION,
-            Event::Text(CowStr::Borrowed("direction")),
+            Event::Text(CowStr::Borrowed(" direction")),
             SPAN_END,
             PARA_END,
             DIV_END,

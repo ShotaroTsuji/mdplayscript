@@ -24,10 +24,6 @@ span.character {
 	text-transform: uppercase;
 }
 
-span.character + span.direction::before {
-	content: ", ";
-}
-
 span.character + span.direction {
 	font-style: italic;
 }
@@ -58,10 +54,6 @@ div.speech > h5 span.character {
 	font-family: sans-serif;
 	font-weight: bold;
 	font-variant-caps: small-caps;
-}
-
-div.speech > h5 span.direction::before {
-	content: ", ";
 }
 
 div.speech > h5 span.direction {

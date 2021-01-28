@@ -17,8 +17,8 @@ Suzanne attache à sa tête, devant une glace, le petit bouquet de fleurs d'oran
 
 Figaro> Dix-neuf pieds sur vingt-six.
 Suzanne> Tiens, Figaro, voilà mon petit chapeau : le trouves-tu mieux ainsi ?
-Figaro (lui prend les mains)> Sans comparaison, ma charmante. Oh ! que ce joli bouque virginal, élevé sur la tête d'une belle fille, est doux, le matin des noces, à l'oeui amoureux d'un époux !...
-Suzanne (se retire)> Que mesures-tu donc là, mon fils ?
+Figaro( lui prend les mains)> Sans comparaison, ma charmante. Oh ! que ce joli bouque virginal, élevé sur la tête d'une belle fille, est doux, le matin des noces, à l'oeui amoureux d'un époux !...
+Suzanne( se retire)> Que mesures-tu donc là, mon fils ?
 Figaro> Je regarde, ma petite Suzanne, si ce beau lit que monseigneur nous donne aura bonne grâce ici.
 Suzanne> Dans cette chambre ?
 Figaro> Il nous la cède.
@@ -50,10 +50,10 @@ Figaro> On a tort.
 Suzanne> Apprends qu'il la destine à obtenir de moi, secrètement, certain quart d'heure, seul à seule, qu'un ancient droit du seigneur... Tu sais s'il était triste !
 Figaro> Je le sais tellement, que si monsieur le comte, en se mariant, n'eût pas aboli ce droit honteux, jamais je ne t'eusse épousée dans ses domaines.
 Suzanne> Eh bien ! s'il détruit, il s'en repent ; et c'est de ta fiancée qu'il veut le racheter en secret aujourd'hui.
-Figaro (se frottant la tête)> Ma téte s'amollit de surprise, et mon front fertilisé...
+Figaro(, se frottant la tête)> Ma téte s'amollit de surprise, et mon front fertilisé...
 Suzanne> Ne le frotte donc pas !
 Figaro> Quel danger ?
-Suzanne (riant)> S'il y venait un petit bouton, des gens superstitiuex...
+Suzanne(, riant)> S'il y venait un petit bouton, des gens superstitiuex...
 Figaro> Tu ris, friponne ! Ah ! s'il y avait moyen d'attraper ce grand trompeur, de le faire donner dans un bon piège, et d'empocher son or !
 Suzanne> De l'intrigue et de l'argent : te voilà dans ta sphère.
 Figaro> Ce n'est pas la honte qui me retient.
@@ -67,14 +67,14 @@ Figaro> Pour m'ouvrir l'esprit, donne un petit baiser.
 Suzanne> À mon amant aujourd'hui ? Je t'en souhaite ! Et qu'en dirait demain mon mari ? (Figaro l'embrasse.)
 Suzanne> Eh bien ! eh bien !
 Figaro> C'est que tu n'as pas d'idée de mon amour.
-Suzanne (se défripant)> Quand cesserez-vous, importun, de m'en parler du matin au soir ?
-Figaro (mystérieusement)> Quand je pourrai te le prouver du soir jusqu'au matin. (On sonne une seconde fois.)
-Suzanne (de loin, les doigts unis sur sa bouche)> Voilà votre baiser, monsieur ; je n'ai plus rien à vous.
-Figaro (court aprés elle)> Oh ! mais ce n'est pas ainsi que vous l'aves reçu.
+Suzanne(, se défripant)> Quand cesserez-vous, importun, de m'en parler du matin au soir ?
+Figaro(, mystérieusement)> Quand je pourrai te le prouver du soir jusqu'au matin. (On sonne une seconde fois.)
+Suzanne(, de loin, les doigts unis sur sa bouche)> Voilà votre baiser, monsieur ; je n'ai plus rien à vous.
+Figaro( court aprés elle)> Oh ! mais ce n'est pas ainsi que vous l'aves reçu.
 
 ### Scène II
 
-<span class="character">Figaro</span><span class="direction">seul</span>
+<span class="character">Figaro</span><span class="direction">, seul</span>
 
 <!-- monologue-begin -->
 
