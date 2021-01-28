@@ -28,10 +28,6 @@ span.character + span.direction {
 	font-style: italic;
 }
 
-span.character + span.direction::after {
-	content: ".";
-}
-
 div.play h3 {
 	margin: 0;
 }
