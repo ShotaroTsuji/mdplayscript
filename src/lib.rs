@@ -359,6 +359,7 @@ fn distil<'a>(terms: Vec<Term<'a>>) -> Vec<Event<'a>> {
                 events.push(SPAN_END.clone());
                 trim_start = true;
             },
+            Term::Event(Event::SoftBreak) => {},
             Term::Event(e) => {
                 events.push(e);
                 trim_start = false;

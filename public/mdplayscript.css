@@ -1,12 +1,7 @@
-body {
+div.content > main {
 	margin: auto;
-	max-width: 210mm;
-}
-
-div.play {
-	margin: auto;
-	padding-left: 4em;
-	padding-right: 2em;
+	padding-left: 4rem;
+	padding-right: 2rem;
 	max-width: 48rem;
 }
 
@@ -94,8 +89,28 @@ div.speech > p > span.direction:last-child {
 	display: block;
 }
 
-div.characters h5 {
+div.characters div.speech {
+	margin-bottom: 0.5em;
+}
+
+div.characters div.speech h5 {
 	display: inline;
+}
+
+div.characters div.speech h5 {
+	text-transform: uppercase;
+	font-variant-caps: normal;
+}
+
+div.characters div.speech h5:only-child {
+	text-transform: none;
+	font-family: sans-serif;
+	font-weight: normal;
+	font-variant-caps: small-caps;
+}
+
+div.characters div.speech::after {
+	content: ".";
 }
 
 div.characters h5::after {
