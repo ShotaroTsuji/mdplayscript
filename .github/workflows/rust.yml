@@ -2,7 +2,7 @@ name: Rust
 
 on:
   push:
-    branches: [ master, develop ]
+    branches: [ master ]
   pull_request:
     branches: [ master ]
 
@@ -25,3 +25,23 @@ jobs:
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_dir: ./public
+    - name: Setup mdBooks
+      uses: peaceiris/actions-mdbook@v1
+      with:
+        mdbook-version: '0.4.6'
+
+    - run: mdbook build ./examples/figaro
+    - run: mdbook build ./examples/torikaeshi
+
+    - name: Deploy mdBook (Figaro)
+      uses: pieceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./examples/figaro/book
+        destination_dir: figaro
+    - name: Deploy mdBook (Torikaeshi)
+      uses: pieceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./examples/torikaeshi/book
+        destination_dir: torikaeshi
