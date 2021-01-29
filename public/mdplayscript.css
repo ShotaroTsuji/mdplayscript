@@ -93,3 +93,19 @@ div.speech > p > span.direction::after {
 div.speech > p > span.direction:last-child {
 	display: block;
 }
+
+div.characters h5 {
+	display: inline;
+}
+
+div.characters h5::after {
+	content: none;
+}
+
+div.characters h5 + p::before {
+	content: ", ";
+}
+
+div.characters p {
+	display: inline;
+}

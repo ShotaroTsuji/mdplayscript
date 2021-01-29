@@ -257,7 +257,14 @@ fn distil_speech<'a>(terms: Vec<Term<'a>>) -> Vec<Event<'a>> {
                 events.push(PARA_START.clone());
             },
             Term::BodyEnd => {
-                events.push(PARA_END.clone());
+                match events.last() {
+                    Some(e) if e == &PARA_START => {
+                        let _ = events.pop();
+                    },
+                    _ => {
+                        events.push(PARA_END.clone());
+                    },
+                }
             },
             Term::Character(mut s) => {
                 TrimInPlace::trim_in_place(&mut s);
@@ -978,8 +985,6 @@ Third"#;
             Event::Text("Young Syrian".into()),
             SPAN_END,
             H5_END,
-            PARA_START,
-            PARA_END,
             DIV_END,
             Event::SoftBreak,
         ]);
