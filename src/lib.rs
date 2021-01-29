@@ -150,8 +150,8 @@ where
         match event {
             Some(Event::Start(Tag::Paragraph)) => {
                 let parser = self.parser.take().unwrap();
-                let (tokener, parser) = EventTokener::read_paragraph(parser);
-                let mut speeches = Speeches::from_vec(tokener);
+                let (tokenizer, parser) = EventTokenizer::read_paragraph(parser);
+                let mut speeches = Speeches::from_vec(tokenizer);
 
                 while let Some(speech) = speeches.next() {
                     let events = if self.is_in_monologue {
@@ -677,7 +677,7 @@ impl TextToken {
     }
 }
 
-struct EventTokener<'a, P> {
+struct EventTokenizer<'a, P> {
     parser: P,
     queue: VecDeque<Token<'a>>,
     nest_level: usize,
@@ -685,11 +685,11 @@ struct EventTokener<'a, P> {
     _phantom: PhantomData<&'a P>,
 }
 
-impl<'a, P> EventTokener<'a, P>
+impl<'a, P> EventTokenizer<'a, P>
 where
     P: 'a + Iterator<Item=Event<'a>>,
 {
-    fn new(parser: P) -> EventTokener<'a, P> {
+    fn new(parser: P) -> EventTokenizer<'a, P> {
         Self {
             parser: parser,
             queue: VecDeque::new(),
@@ -705,18 +705,18 @@ where
     }
 
     fn read_paragraph(parser: P) -> (Vec<Token<'a>>, P) {
-        let mut tokener = Self::new(parser);
+        let mut tokenizer = Self::new(parser);
         let mut paragraph = Vec::new();
 
-        while let Some(token) = tokener.next() {
+        while let Some(token) = tokenizer.next() {
             paragraph.push(token);
         }
 
-        (paragraph, tokener.parser)
+        (paragraph, tokenizer.parser)
     }
 }
 
-impl<'a, P> Iterator for EventTokener<'a, P>
+impl<'a, P> Iterator for EventTokenizer<'a, P>
 where
     P: Iterator<Item=Event<'a>>,
 {
@@ -744,7 +744,7 @@ where
                     Some(Token::Event(ret))
                 },
                 (Event::Text(text), 0) => {
-                    for t in TextTokener::new(&text) {
+                    for t in TextTokenizer::new(&text) {
                         self.queue.push_back(Token::Text(t));
                     }
 
@@ -758,19 +758,19 @@ where
     }
 }
 
-struct TextTokener<'a> {
+struct TextTokenizer<'a> {
     s: &'a str,
 }
 
-impl<'a> TextTokener<'a> {
+impl<'a> TextTokenizer<'a> {
     fn new(s: &'a str) -> Self {
-        TextTokener {
+        TextTokenizer {
             s: s,
         }
     }
 }
 
-impl<'a> Iterator for TextTokener<'a> {
+impl<'a> Iterator for TextTokenizer<'a> {
     type Item = TextToken;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -847,7 +847,7 @@ mod test {
     #[test]
     fn token_of_rangle_after_rparen() {
         let s = ")>";
-        let tokens: Vec<TextToken> = TextTokener::new(s).collect();
+        let tokens: Vec<TextToken> = TextTokenizer::new(s).collect();
         assert_eq!(tokens, vec![
             TextToken::Right,
             TextToken::Rangle,
@@ -855,9 +855,9 @@ mod test {
     }
 
     #[test]
-    fn text_tokener() {
+    fn text_tokenizer() {
         let s = "AAA> xxx ((yy)) (ddd)";
-        let token = TextTokener::new(s).collect::<Vec<TextToken>>();
+        let token = TextTokenizer::new(s).collect::<Vec<TextToken>>();
         assert_eq!(token, vec![
             TextToken::Text("AAA".to_owned()),
             TextToken::Rangle,
@@ -873,13 +873,13 @@ mod test {
     }
 
     #[test]
-    fn tokener() {
+    fn tokenizer() {
         let s = "AAA> xxx (*E)M*((yyy)) zzz)\nxxx";
 
         let mut parser = Parser::new(s);
         assert_eq!(parser.next(), Some(Event::Start(Tag::Paragraph)));
 
-        let mut parser = EventTokener::new(&mut parser);
+        let mut parser = EventTokenizer::new(&mut parser);
         assert_eq!(parser.next(), Some(Token::Text(TextToken::Text("AAA".to_owned()))));
         assert_eq!(parser.next(), Some(Token::Text(TextToken::Rangle)));
         assert_eq!(parser.next(), Some(Token::Text(TextToken::Text(" xxx ".to_owned()))));
@@ -903,7 +903,7 @@ mod test {
         let mut parser = Parser::new(s);
         assert_eq!(parser.next(), Some(PARA_TAG_START));
 
-        let tokens: Vec<Token<'_>> = EventTokener::new(parser).collect();
+        let tokens: Vec<Token<'_>> = EventTokenizer::new(parser).collect();
         assert_eq!(tokens, vec![
             Token::Text(TextToken::Text("A ".to_owned())),
             Token::Text(TextToken::Left),
@@ -915,7 +915,7 @@ mod test {
     }
 
     #[test]
-    fn event_tokener_for_paragraphs() {
+    fn event_tokenizer_for_paragraphs() {
         let s = r#"First
 
 Second
@@ -924,32 +924,32 @@ Third"#;
         let mut parser = Parser::new(s);
         assert_eq!(parser.next(), Some(PARA_TAG_START));
 
-        let mut tokener = EventTokener::new(parser);
-        assert_eq!(tokener.next(), Some(Token::Text(TextToken::Text("First".to_owned()))));
-        assert_eq!(tokener.next(), None);
+        let mut tokenizer = EventTokenizer::new(parser);
+        assert_eq!(tokenizer.next(), Some(Token::Text(TextToken::Text("First".to_owned()))));
+        assert_eq!(tokenizer.next(), None);
 
-        let mut parser = tokener.into_inner();
+        let mut parser = tokenizer.into_inner();
         assert_eq!(parser.next(), Some(PARA_TAG_START));
 
-        let mut tokener = EventTokener::new(parser);
-        assert_eq!(tokener.next(), Some(Token::Text(TextToken::Text("Second".to_owned()))));
-        assert_eq!(tokener.next(), None);
+        let mut tokenizer = EventTokenizer::new(parser);
+        assert_eq!(tokenizer.next(), Some(Token::Text(TextToken::Text("Second".to_owned()))));
+        assert_eq!(tokenizer.next(), None);
 
-        let mut parser = tokener.into_inner();
+        let mut parser = tokenizer.into_inner();
         assert_eq!(parser.next(), Some(PARA_TAG_START));
 
-        let mut tokener = EventTokener::new(parser);
-        assert_eq!(tokener.next(), Some(Token::Text(TextToken::Text("Third".to_owned()))));
-        assert_eq!(tokener.next(), None);
+        let mut tokenizer = EventTokenizer::new(parser);
+        assert_eq!(tokenizer.next(), Some(Token::Text(TextToken::Text("Third".to_owned()))));
+        assert_eq!(tokenizer.next(), None);
 
-        let mut parser = tokener.into_inner();
+        let mut parser = tokenizer.into_inner();
         assert_eq!(parser.next(), None);
     }
 
     fn test_starts_with_speech_heading(s: &str, expected: Option<HeadingKind>) {
         let mut parser = Parser::new(s);
         assert_eq!(parser.next(), Some(PARA_TAG_START));
-        let (tokens, mut parser) = EventTokener::read_paragraph(parser);
+        let (tokens, mut parser) = EventTokenizer::read_paragraph(parser);
         assert_eq!(speech_heading_kind(&tokens), expected);
         assert_eq!(parser.next(), None);
     }
@@ -969,7 +969,7 @@ Third"#;
         let mut parser = Parser::new(s);
         assert_eq!(parser.next(), Some(PARA_TAG_START));
 
-        let (tokens, _) = EventTokener::read_paragraph(parser);
+        let (tokens, _) = EventTokenizer::read_paragraph(parser);
         let mut speeches = Speeches::from_vec(tokens);
         assert_eq!(speeches.next(), Some(vec![
                 Token::Text(TextToken::Text("A".to_owned())),
@@ -1011,7 +1011,7 @@ Third"#;
 
         let mut parser = Parser::new(s);
         assert_eq!(parser.next(), Some(PARA_TAG_START));
-        let tokens: Vec<Token<'_>> = EventTokener::new(parser).collect();
+        let tokens: Vec<Token<'_>> = EventTokenizer::new(parser).collect();
         assert_eq!(tokens, vec![
             Token::Text(TextToken::Text("Young Syrian".to_owned())),
             Token::Text(TextToken::Rangle),
@@ -1053,7 +1053,7 @@ Third"#;
 
         let mut parser = Parser::new(s);
         assert_eq!(parser.next(), Some(PARA_TAG_START));
-        let tokens: Vec<Token<'_>> = EventTokener::new(parser).collect();
+        let tokens: Vec<Token<'_>> = EventTokenizer::new(parser).collect();
         let mut speeches = Speeches::from_vec(tokens);
         let speech = speeches.next().unwrap();
 
@@ -1076,7 +1076,7 @@ Third"#;
         let s = "A> (Writing `x`) What?";
         let mut parser = Parser::new(s);
         assert_eq!(parser.next(), Some(PARA_TAG_START));
-        let (para, _) = EventTokener::read_paragraph(parser);
+        let (para, _) = EventTokenizer::read_paragraph(parser);
         let mut speeches = Speeches::from_vec(para);
         let terms = parse_speech(speeches.next().unwrap());
         assert_eq!(terms, vec![
@@ -1099,7 +1099,7 @@ Third"#;
         let s = "A> (Writing *x*) What?";
         let mut parser = Parser::new(s);
         assert_eq!(parser.next(), Some(PARA_TAG_START));
-        let (para, _) = EventTokener::read_paragraph(parser);
+        let (para, _) = EventTokenizer::read_paragraph(parser);
         let mut speeches = Speeches::from_vec(para);
         let terms = parse_speech(speeches.next().unwrap());
         assert_eq!(terms, vec![
@@ -1127,7 +1127,7 @@ B> Bye!
 A> What? (__Turning (x)__)  "#;
         let mut parser = Parser::new(s);
         assert_eq!(parser.next(), Some(PARA_TAG_START));
-        let (paragraph, _) = EventTokener::read_paragraph(parser);
+        let (paragraph, _) = EventTokenizer::read_paragraph(parser);
         let mut speeches = Speeches::from_vec(paragraph);
         let events = distil(parse_speech(speeches.next().unwrap()));
         assert_eq!(events, vec![
@@ -1193,7 +1193,7 @@ A> What? (__Turning (x)__)  "#;
 
         let mut parser = Parser::new(s);
         assert_eq!(parser.next(), Some(PARA_TAG_START));
-        let (tokens, _) = EventTokener::read_paragraph(parser);
+        let (tokens, _) = EventTokenizer::read_paragraph(parser);
         let mut speeches = Speeches::from_vec(tokens);
 
         let speech = speeches.next().unwrap();
@@ -1235,7 +1235,7 @@ A> What? (__Turning (x)__)  "#;
         let mut parser = Parser::new(s);
         assert_eq!(parser.next(), Some(PARA_TAG_START));
 
-        let (tokens, _) = EventTokener::read_paragraph(parser);
+        let (tokens, _) = EventTokenizer::read_paragraph(parser);
         let mut speeches = Speeches::from_vec(tokens);
         let speech = speeches.next().unwrap();
 
@@ -1264,7 +1264,7 @@ A> What? (__Turning (x)__)  "#;
         let mut parser = Parser::new(s);
         assert_eq!(parser.next(), Some(PARA_TAG_START));
 
-        let (tokens, _) = EventTokener::read_paragraph(parser);
+        let (tokens, _) = EventTokenizer::read_paragraph(parser);
         let mut speeches = Speeches::from_vec(tokens);
         let speech = speeches.next().unwrap();
 
@@ -1309,7 +1309,7 @@ Monologue (direction) Monologue
 
         assert_eq!(parser.next(), Some(PARA_TAG_START));
 
-        let (tokens, parser) = EventTokener::read_paragraph(&mut parser);
+        let (tokens, parser) = EventTokenizer::read_paragraph(&mut parser);
         let mut speeches = Speeches::from_vec(tokens);
         let speech = speeches.next().unwrap();
 
@@ -1330,7 +1330,7 @@ Monologue (direction) Monologue
 
         assert_eq!(parser.next(), Some(PARA_TAG_START));
 
-        let (tokens, parser) = EventTokener::read_paragraph(parser);
+        let (tokens, parser) = EventTokenizer::read_paragraph(parser);
         let mut speeches = Speeches::from_vec(tokens);
         let speech = speeches.next().unwrap();
 
@@ -1362,7 +1362,7 @@ Monologue (direction) Monologue
 
         let mut parser = Parser::new(s);
         assert_eq!(parser.next(), Some(PARA_TAG_START));
-        let (tokens, _) = EventTokener::read_paragraph(parser);
+        let (tokens, _) = EventTokenizer::read_paragraph(parser);
         let mut speeches = Speeches::from_vec(tokens);
 
         let speech = speeches.next().unwrap();
