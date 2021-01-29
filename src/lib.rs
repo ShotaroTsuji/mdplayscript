@@ -151,11 +151,11 @@ where
                 self.queue.pop_front()
             },
             Some(html @ Event::Html(_)) => {
-                match is_monologue_directive(&html) {
-                    Some(MonologueDirective::Begin) => {
+                match match_directive(&html) {
+                    Some(Directive::MonologueBegin) => {
                         self.is_in_monologue = true;
                     },
-                    Some(MonologueDirective::End) => {
+                    Some(Directive::MonologueEnd) => {
                         self.is_in_monologue = false;
                     },
                     None => {},
@@ -170,12 +170,12 @@ where
 }
 
 #[derive(Debug,Clone,PartialEq)]
-enum MonologueDirective {
-    Begin,
-    End,
+enum Directive {
+    MonologueBegin,
+    MonologueEnd,
 }
 
-fn is_monologue_directive<'a>(event: &Event<'a>) -> Option<MonologueDirective> {
+fn match_directive<'a>(event: &Event<'a>) -> Option<Directive> {
     let s = match event {
         Event::Html(s) => s.as_ref(),
         _ => return None,
@@ -185,9 +185,9 @@ fn is_monologue_directive<'a>(event: &Event<'a>) -> Option<MonologueDirective> {
     let s = s.trim_start();
 
     if s.starts_with("monologue-begin") {
-        return Some(MonologueDirective::Begin);
+        return Some(Directive::MonologueBegin);
     } else if s.starts_with("monologue-end") {
-        return Some(MonologueDirective::End);
+        return Some(Directive::MonologueEnd);
     }
 
     None
@@ -1226,7 +1226,7 @@ A> What? (__Turning (x)__)  "#;
 
         let mut parser = Parser::new(s);
         let event = parser.next().unwrap();
-        assert_eq!(is_monologue_directive(&event), Some(MonologueDirective::Begin));
+        assert_eq!(match_directive(&event), Some(Directive::MonologueBegin));
     }
 
     #[test]
@@ -1235,7 +1235,7 @@ A> What? (__Turning (x)__)  "#;
 
         let mut parser = Parser::new(s);
         let event = parser.next().unwrap();
-        assert_eq!(is_monologue_directive(&event), Some(MonologueDirective::End));
+        assert_eq!(match_directive(&event), Some(Directive::MonologueEnd));
     }
 
     #[test]
@@ -1249,7 +1249,7 @@ Monologue (direction) Monologue
 
         let mut parser = Parser::new(s);
         let begin = parser.next().unwrap();
-        assert_eq!(is_monologue_directive(&begin), Some(MonologueDirective::Begin));
+        assert_eq!(match_directive(&begin), Some(Directive::MonologueBegin));
 
         assert_eq!(parser.next(), Some(PARA_TAG_START));
 
@@ -1297,7 +1297,7 @@ Monologue (direction) Monologue
         ]);
 
         let end = parser.next().unwrap();
-        assert_eq!(is_monologue_directive(&end), Some(MonologueDirective::End));
+        assert_eq!(match_directive(&end), Some(Directive::MonologueEnd));
     }
 
     //#[test]
