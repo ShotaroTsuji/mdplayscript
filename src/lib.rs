@@ -56,14 +56,14 @@
 //! assert_eq!(convert("A (running)> Hello!"),
 //! r#"<div class="speech"><h5><span class="character">A</span><span class="direction">running</span></h5><p><span>Hello!</span></p></div>
 //! "#);
-//! assert_eq!(convert(r#"<!-- monologue-begin -->
+//! assert_eq!(convert(r#"<!-- playscript-monologue-begin -->
 //! Monologue
 //! (direction)
-//! <!-- monologue-end -->
+//! <!-- playscript-monologue-end -->
 //! "#),
-//! r#"<!-- monologue-begin -->
+//! r#"<!-- playscript-monologue-begin -->
 //! <div class="speech"><p><span>Monologue</span><span class="direction">direction</span></p></div>
-//! <!-- monologue-end -->
+//! <!-- playscript-monologue-end -->
 //! "#);
 //! ```
 //!
@@ -96,10 +96,18 @@ use std::collections::VecDeque;
 use pulldown_cmark::{Event, Tag, CowStr};
 use trim_in_place::TrimInPlace;
 
+#[derive(Debug,Clone,Default)]
+pub struct MdPlayScriptOption {
+    pub title: Option<String>,
+    pub subtitle: Option<String>,
+    pub authors: Vec<String>,
+}
+
 pub struct MdPlayScript<'a, P> {
     parser: Option<P>,
     queue: VecDeque<Event<'a>>,
     is_in_monologue: bool,
+    option: MdPlayScriptOption,
     _marker: PhantomData<&'a P>,
 }
 
@@ -108,10 +116,15 @@ where
     P: Iterator<Item=Event<'a>>,
 {
     pub fn new(parser: P) -> Self {
+        Self::with_option(parser, Default::default())
+    }
+
+    pub fn with_option(parser: P, option: MdPlayScriptOption) -> Self {
         Self {
             parser: Some(parser),
             queue: VecDeque::new(),
             is_in_monologue: false,
+            option: option,
             _marker: PhantomData,
         }
     }
@@ -158,6 +171,33 @@ where
                     Some(Directive::MonologueEnd) => {
                         self.is_in_monologue = false;
                     },
+                    Some(Directive::Title) => {
+                        let s = if let Some(title) = self.option.title.as_ref() {
+                            format!("<h1 class=\"cover-title\">{}</h1>\n", title)
+                        } else {
+                            String::new()
+                        };
+                        return Some(Event::Html(s.into()));
+                    },
+                    Some(Directive::Subtitle) => {
+                        let s = if let Some(title) = self.option.subtitle.as_ref() {
+                            format!("<h2 class=\"cover-title\">{}</h2>\n", title)
+                        } else {
+                            String::new()
+                        };
+                        return Some(Event::Html(s.into()));
+                    },
+                    Some(Directive::Authors) => {
+                        if self.option.authors.len() > 0 {
+                            let mut s = String::new();
+                            for author in self.option.authors.iter() {
+                                s += "<p class=\"cover-author\">";
+                                s += author;
+                                s += "</p>\n";
+                            }
+                            return Some(Event::Html(s.into()));
+                        }
+                    },
                     None => {},
                 }
 
@@ -173,6 +213,9 @@ where
 enum Directive {
     MonologueBegin,
     MonologueEnd,
+    Title,
+    Subtitle,
+    Authors,
 }
 
 fn match_directive<'a>(event: &Event<'a>) -> Option<Directive> {
@@ -184,10 +227,18 @@ fn match_directive<'a>(event: &Event<'a>) -> Option<Directive> {
     let s = s.replace("<!--", "");
     let s = s.trim_start();
 
+    let s = s.replace("playscript-", "");
+
     if s.starts_with("monologue-begin") {
         return Some(Directive::MonologueBegin);
     } else if s.starts_with("monologue-end") {
         return Some(Directive::MonologueEnd);
+    } else if s.starts_with("title") {
+        return Some(Directive::Title);
+    } else if s.starts_with("subtitle") {
+        return Some(Directive::Subtitle);
+    } else if s.starts_with("authors") {
+        return Some(Directive::Authors);
     }
 
     None
@@ -1325,5 +1376,21 @@ Monologue (direction) Monologue
         let events = parse_speech(speech);
         let events = distil(events);
         assert_eq!(events, vec![]);
+    }
+
+    #[test]
+    fn title_and_authors() {
+        let s = "<!-- playscript-title -->\n<!-- playscript-authors -->";
+        let opt = MdPlayScriptOption {
+            title: Some("Title".to_owned()),
+            authors: vec!["Author".to_owned(), "B".to_owned()],
+        };
+        let p = MdPlayScript::with_option(Parser::new(s), opt);
+        let mut buf = String::new();
+        pulldown_cmark::html::push_html(&mut buf, p);
+        assert_eq!(buf, r#"<h1 class="cover-title">Title</h1>
+<p class="cover-author">Author</p>
+<p class="cover-author">B</p>
+"#);
     }
 }

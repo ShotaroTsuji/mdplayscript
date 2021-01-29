@@ -2,7 +2,7 @@ use structopt::StructOpt;
 use rust_embed::RustEmbed;
 use pulldown_cmark::Parser;
 use pulldown_cmark_to_cmark::cmark;
-use mdplayscript::MdPlayScript;
+use mdplayscript::{MdPlayScript, MdPlayScriptOption};
 use mdbook::preprocess::{PreprocessorContext, CmdPreprocessor};
 use mdbook::book::{Book, BookItem};
 
@@ -88,6 +88,15 @@ impl PlayScriptPreprocessor {
         let css = Stylesheet::from_context(ctx);
         css.copy(ctx);
 
+        let opt = MdPlayScriptOption {
+            title: ctx.config.book.title.clone(),
+            subtitle: ctx.config.get("preprocessor.playscript.subtitle")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_owned()),
+            authors: ctx.config.book.authors.clone(),
+        };
+        eprintln!("{:?}", opt);
+
         book.for_each_mut(|book_item| {
             match book_item {
                 BookItem::Chapter(chapter) => {
@@ -95,10 +104,10 @@ impl PlayScriptPreprocessor {
                     let mut content = String::new();
                     std::mem::swap(&mut chapter.content, &mut content);
 
-                    let parser = MdPlayScript::new(Parser::new(&content));
+                    let parser = MdPlayScript::with_option(Parser::new(&content), opt.clone());
                     let mut processed = String::with_capacity(len + len/2);
                     cmark(parser, &mut processed, None).unwrap();
-                    eprintln!("{}", processed);
+                    //eprintln!("{}", processed);
                     std::mem::swap(&mut chapter.content, &mut processed);
                 },
                 _ => {},

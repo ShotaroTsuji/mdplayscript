@@ -112,3 +112,14 @@ div.characters h5 + p::before {
 div.characters p {
 	display: inline;
 }
+
+h1.cover-title {
+	padding: 0;
+	text-align: center;
+}
+
+p.cover-author {
+	text-align: center;
+	font-weight: bold;
+	font-size: 2rem;
+}
