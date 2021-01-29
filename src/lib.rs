@@ -1383,6 +1383,7 @@ Monologue (direction) Monologue
         let s = "<!-- playscript-title -->\n<!-- playscript-authors -->";
         let opt = MdPlayScriptOption {
             title: Some("Title".to_owned()),
+            subtitle: None,
             authors: vec!["Author".to_owned(), "B".to_owned()],
         };
         let p = MdPlayScript::with_option(Parser::new(s), opt);

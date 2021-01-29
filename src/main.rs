@@ -28,7 +28,7 @@ enum Command {
 fn main() {
     let opt = Opt::from_args();
 
-    eprintln!("{:#?}", opt);
+    //eprintln!("{:#?}", opt);
 
     let preprocessor = PlayScriptPreprocessor::new();
 
@@ -95,7 +95,7 @@ impl PlayScriptPreprocessor {
                 .map(|s| s.to_owned()),
             authors: ctx.config.book.authors.clone(),
         };
-        eprintln!("{:?}", opt);
+        //eprintln!("{:?}", opt);
 
         book.for_each_mut(|book_item| {
             match book_item {
@@ -146,7 +146,7 @@ impl Stylesheet {
 
         path.push(self.filename);
 
-        eprintln!("copy to {:?}", path);
+        //eprintln!("copy to {:?}", path);
         let css = Asset::get(self.filename).unwrap();
         std::fs::write(&path, &css).unwrap();
     }
