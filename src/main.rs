@@ -104,6 +104,7 @@ impl Preprocessor for PlayScriptPreprocessor {
                     let parser = MdPlayScript::new(Parser::new(&content));
                     let mut processed = String::with_capacity(len + len/2);
                     cmark(parser, &mut processed, None).unwrap();
+                    eprintln!("{}", processed);
                     std::mem::swap(&mut chapter.content, &mut processed);
                 },
                 _ => {},

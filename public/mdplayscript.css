@@ -66,6 +66,10 @@ div.speech > p {
 	text-align: left;
 }
 
+div.speech > p span + span::before {
+	content: " ";
+}
+
 div.speech > p + p {
 	margin-top: 0;
 }

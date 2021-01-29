@@ -62,8 +62,7 @@
 //! <!-- monologue-end -->
 //! "#),
 //! r#"<!-- monologue-begin -->
-//! <div class="speech"><p><span>Monologue</span>
-//! <span class="direction">direction</span></p></div>
+//! <div class="speech"><p><span>Monologue</span><span class="direction">direction</span></p></div>
 //! <!-- monologue-end -->
 //! "#);
 //! ```
@@ -295,6 +294,7 @@ fn distil_speech<'a>(terms: Vec<Term<'a>>) -> Vec<Event<'a>> {
                     }
                 }
             },
+            Term::Event(Event::SoftBreak) => {},
             Term::Event(e) => {
                 events.push(e);
             },
@@ -1079,11 +1079,9 @@ A> What? (__Turning (x)__)  "#;
             SPAN_START,
             Event::Text("Hello!".into()),
             SPAN_END,
-            Event::SoftBreak,
             SPAN_DIRECTION,
             Event::Text(" Turning to audience".into()),
             SPAN_END,
-            Event::SoftBreak,
             PARA_END,
             DIV_END,
             Event::SoftBreak,
@@ -1100,7 +1098,6 @@ A> What? (__Turning (x)__)  "#;
             SPAN_START,
             Event::Text("Bye!".into()),
             SPAN_END,
-            Event::SoftBreak,
             PARA_END,
             DIV_END,
             Event::SoftBreak,
@@ -1295,5 +1292,32 @@ Monologue (direction) Monologue
 
         let end = parser.next().unwrap();
         assert_eq!(is_monologue_directive(&end), Some(MonologueDirective::End));
+    }
+
+    //#[test]
+    fn speech_with_multi_lines() {
+        let s = "A ( Running)> Hello!\nMaam.\nGoodbye!";
+
+        let mut parser = Parser::new(s);
+        assert_eq!(parser.next(), Some(PARA_TAG_START));
+        let (tokens, _) = EventTokener::read_paragraph(parser);
+        let mut speeches = Speeches::from_vec(tokens);
+
+        let speech = speeches.next().unwrap();
+
+        /*
+        assert_eq!(speech, vec![
+            Token::Text(TextToken::Text("A ".into())),
+            Token::Text(TextToken::Left),
+            Token::Text(TextToken::Text("Running".into())),
+            Token::Text(TextToken::Right),
+            Token::Text(TextToken::Rangle),
+            Token::Text(TextToken::Text(" Hello!".into())),
+        ]);
+        */
+
+        let events = parse_speech(speech);
+        let events = distil(events);
+        assert_eq!(events, vec![]);
     }
 }
