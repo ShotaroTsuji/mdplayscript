@@ -1,0 +1,125 @@
+div.content > main {
+	margin: auto;
+	padding-left: 4rem;
+	padding-right: 2rem;
+	max-width: 48rem;
+}
+
+p {
+	text-align: left;
+	hanging-punctuation: allow-end;
+}
+
+h1, h2, h3, h4 {
+	padding-left: 2em;
+}
+
+span.character {
+	font-style: normal;
+}
+
+span.character + span.direction {
+	font-style: normal;
+}
+
+div.play h3 {
+	margin: 0;
+}
+
+div.speech {
+	text-indent: -2em;
+	line-height: 1.5;
+}
+
+div.speech > h5 {
+	display: inline;
+	font-style: normal;
+	font-weight: normal;
+	font-size: medium;
+	text-align: center;
+	padding-right: 1em;
+	margin: 0;
+}
+
+div.speech > h5 span.character {
+	text-transform: none;
+	font-family: sans-serif;
+	font-weight: bold;
+	font-variant-caps: small-caps;
+}
+
+div.speech > h5 span.direction {
+}
+
+div.speech > p {
+	display: inline;
+	font-style: normal;
+	text-indent: 2em;
+	text-align: left;
+	margin: 0;
+}
+
+div.speech > p + p {
+	margin-top: 0;
+}
+
+div.speech > p > span.direction {
+	text-align: right;
+}
+
+div.speech > p > span.direction {
+	font-style: normal;
+}
+
+div.speech > p > span.direction::before {
+	content: "（";
+}
+
+div.speech > p > span.direction::after {
+	content: "）";
+}
+
+div.speech > p > span.direction:last-child {
+}
+
+div.characters {
+	margin-left: 2em;
+}
+
+div.characters div.speech {
+	margin-bottom: 0em;
+}
+
+div.characters div.speech h5 {
+}
+
+div.characters div.speech h5:only-child {
+	text-transform: none;
+	font-family: sans-serif;
+	font-weight: normal;
+	font-variant-caps: small-caps;
+}
+
+div.characters div.speech::after {
+}
+
+div.characters h5::after {
+}
+
+div.characters h5 + p::before {
+}
+
+div.characters p {
+	display: inline;
+}
+
+h1.cover-title {
+	padding: 0;
+	text-align: center;
+}
+
+p.cover-author {
+	text-align: center;
+	font-weight: bold;
+	font-size: 2rem;
+}
