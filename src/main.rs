@@ -1,10 +1,9 @@
-use std::path::Path;
 use structopt::StructOpt;
 use rust_embed::RustEmbed;
 use pulldown_cmark::Parser;
 use pulldown_cmark_to_cmark::cmark;
 use mdplayscript::MdPlayScript;
-use mdbook::preprocess::{Preprocessor, PreprocessorContext, CmdPreprocessor};
+use mdbook::preprocess::{PreprocessorContext, CmdPreprocessor};
 use mdbook::book::{Book, BookItem};
 
 #[derive(Debug,StructOpt)]
@@ -52,7 +51,7 @@ fn main() {
     }
 }
 
-fn handle_renderer<P: Preprocessor>(prep: P, renderer: &str) -> ! {
+fn handle_renderer(prep: PlayScriptPreprocessor, renderer: &str) -> ! {
     if prep.supports_renderer(renderer) {
         std::process::exit(0);
     } else {
@@ -60,7 +59,7 @@ fn handle_renderer<P: Preprocessor>(prep: P, renderer: &str) -> ! {
     }
 }
 
-fn handle_preprocessing<P: Preprocessor>(prep: P) -> Result<(), mdbook::errors::Error> {
+fn handle_preprocessing(prep: PlayScriptPreprocessor) -> Result<(), mdbook::errors::Error> {
     let (ctx, book) = CmdPreprocessor::parse_input(std::io::stdin())?;
 
     let book = prep.run(&ctx, book)?;
@@ -77,12 +76,6 @@ impl PlayScriptPreprocessor {
         Self {
         }
     }
-}
-
-impl Preprocessor for PlayScriptPreprocessor {
-    fn name(&self) -> &str {
-        "mdplayscript"
-    }
 
     fn supports_renderer(&self, renderer: &str) -> bool {
         match renderer {
@@ -92,7 +85,8 @@ impl Preprocessor for PlayScriptPreprocessor {
     }
 
     fn run(&self, ctx: &PreprocessorContext, mut book: Book) -> mdbook::errors::Result<Book> {
-        copy_css(&ctx.root);
+        let css = Stylesheet::from_context(ctx);
+        css.copy(ctx);
 
         book.for_each_mut(|book_item| {
             match book_item {
@@ -119,15 +113,32 @@ impl Preprocessor for PlayScriptPreprocessor {
 #[folder = "$CARGO_MANIFEST_DIR/public"]
 struct Asset;
 
-const CSS_FILE_NAME: &'static str = "mdplayscript.css";
+struct Stylesheet {
+    filename: &'static str,
+}
 
-fn copy_css<P: AsRef<Path>>(root: P) {
-    let mut path = root.as_ref().to_path_buf();
-    assert!(path.exists(), "root directory does not exist");
+impl Stylesheet {
+    fn from_context(ctx: &PreprocessorContext) -> Self {
+        assert_eq!(ctx.renderer.as_str(), "html");
 
-    path.push(CSS_FILE_NAME);
+        let filename = match ctx.config.book.language.as_ref() {
+            Some(lang) if lang == "ja" => "mdplayscript_ja.css",
+            _ => "mdplayscript.css",
+        };
 
-    eprintln!("copy to {:?}", path);
-    let css = Asset::get(CSS_FILE_NAME).unwrap();
-    std::fs::write(&path, &css).unwrap();
+        Self {
+            filename: filename,
+        }
+    }
+
+    fn copy(&self, ctx: &PreprocessorContext) {
+        let mut path = ctx.root.clone();
+        assert!(path.exists(), "root directory does not exist");
+
+        path.push(self.filename);
+
+        eprintln!("copy to {:?}", path);
+        let css = Asset::get(self.filename).unwrap();
+        std::fs::write(&path, &css).unwrap();
+    }
 }
