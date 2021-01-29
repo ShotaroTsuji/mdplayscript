@@ -1,0 +1,290 @@
+<!DOCTYPE HTML>
+<html lang="fr" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Scène 1 - La Folle Journée</title>
+        
+        
+
+
+        <!-- Custom HTML head -->
+        
+
+
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        
+        <link rel="icon" href="../favicon.svg">
+        
+        
+        <link rel="shortcut icon" href="../favicon.png">
+        
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        
+        <link rel="stylesheet" href="../css/print.css" media="print">
+        
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        
+        <link rel="stylesheet" href="../fonts/fonts.css">
+        
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        
+        <link rel="stylesheet" href="../mdplayscript.css">
+        
+
+        
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded "><a href="../cover.html"><strong aria-hidden="true">1.</strong> Cover</a></li><li class="chapter-item expanded "><a href="../characters.html"><strong aria-hidden="true">2.</strong> Characters</a></li><li class="chapter-item expanded "><a href="../acte_1.html"><strong aria-hidden="true">3.</strong> Acte 1</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../acte_1/scene_1.html" class="active"><strong aria-hidden="true">3.1.</strong> Scène 1</a></li><li class="chapter-item expanded "><a href="../acte_1/scene_2.html"><strong aria-hidden="true">3.2.</strong> Scène 2</a></li><li class="chapter-item expanded "><a href="../acte_1/scene_3.html"><strong aria-hidden="true">3.3.</strong> Scène 3</a></li></ol></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                        
+                    </div>
+
+                    <h1 class="menu-title">La Folle Journée</h1>
+
+                    <div class="right-buttons">
+                        
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        
+                        
+                    </div>
+                </div>
+
+                
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" name="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+                
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h2><a class="header" href="#scène-i" id="scène-i">Scène I</a></h2>
+<p><span class="character">Figaro, Suzanne</span></p>
+<div class="speech"><h5><a class="header" href="#span-classcharacterfigarospan" id="span-classcharacterfigarospan"><span class="character">Figaro</span></a></h5><p><span>Dix-neuf pieds sur vingt-six.</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharactersuzannespan" id="span-classcharactersuzannespan"><span class="character">Suzanne</span></a></h5><p><span>Tiens, Figaro, voilà mon petit chapeau : le trouves-tu mieux ainsi ?</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharacterfigarospanspan-classdirection-lui-prend-les-mainsspan" id="span-classcharacterfigarospanspan-classdirection-lui-prend-les-mainsspan"><span class="character">Figaro</span><span class="direction"> lui prend les mains</span></a></h5><p><span>Sans comparaison, ma charmante. Oh ! que ce joli bouque virginal, élevé sur la tête d'une belle fille, est doux, le matin des noces, à l'oeui amoureux d'un époux !...</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharactersuzannespanspan-classdirection-se-retirespan" id="span-classcharactersuzannespanspan-classdirection-se-retirespan"><span class="character">Suzanne</span><span class="direction"> se retire</span></a></h5><p><span>Que mesures-tu donc là, mon fils ?</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharacterfigarospan-1" id="span-classcharacterfigarospan-1"><span class="character">Figaro</span></a></h5><p><span>Je regarde, ma petite Suzanne, si ce beau lit que monseigneur nous donne aura bonne grâce ici.</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharactersuzannespan-1" id="span-classcharactersuzannespan-1"><span class="character">Suzanne</span></a></h5><p><span>Dans cette chambre ?</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharacterfigarospan-2" id="span-classcharacterfigarospan-2"><span class="character">Figaro</span></a></h5><p><span>Il nous la cède.</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharactersuzannespan-2" id="span-classcharactersuzannespan-2"><span class="character">Suzanne</span></a></h5><p><span>Et moi je n'en veux point.</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharacterfigarospan-3" id="span-classcharacterfigarospan-3"><span class="character">Figaro</span></a></h5><p><span>Pourquoi ?</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharactersuzannespan-3" id="span-classcharactersuzannespan-3"><span class="character">Suzanne</span></a></h5><p><span>Je n'en veux point.</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharacterfigarospan-4" id="span-classcharacterfigarospan-4"><span class="character">Figaro</span></a></h5><p><span>Mais encore ?</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharactersuzannespan-4" id="span-classcharactersuzannespan-4"><span class="character">Suzanne</span></a></h5><p><span>Elle me déplaît.</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharacterfigarospan-5" id="span-classcharacterfigarospan-5"><span class="character">Figaro</span></a></h5><p><span>On dit une raison.</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharactersuzannespan-5" id="span-classcharactersuzannespan-5"><span class="character">Suzanne</span></a></h5><p><span>Si je n'en veux pas dire ?</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharacterfigarospan-6" id="span-classcharacterfigarospan-6"><span class="character">Figaro</span></a></h5><p><span>Oh ! quand elles sont sûres de nous !</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharactersuzannespan-6" id="span-classcharactersuzannespan-6"><span class="character">Suzanne</span></a></h5><p><span>Prouver que j'ai raison serait accorder que je puis avoir tort. Es-tu mon serviteur, ou non ?</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharacterfigarospan-7" id="span-classcharacterfigarospan-7"><span class="character">Figaro</span></a></h5><p><span>Tu prends de l'humeur contre la chambre du château la plus commode, et qui tient le milieu des deux appartements.</span><span>La nuit, si madame est incommodée, elle sonnera de son côté : zeste, en deux pas tu es chez elle.</span><span>Monseigneur veut-il quelque chose ? il n'a qu'à tinter du sien : crac, en trois sauts me voilà rendu.</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharactersuzannespan-7" id="span-classcharactersuzannespan-7"><span class="character">Suzanne</span></a></h5><p><span>Fort bien ! Mais quand il aura tinté, le matin, pour te donner quelque bonne et longue commission : zeste, en deux pas il est à ma porte, et crac, en trois sauts...</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharacterfigarospan-8" id="span-classcharacterfigarospan-8"><span class="character">Figaro</span></a></h5><p><span>Qu'entendez-vous par ces paroles ?</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharactersuzannespan-8" id="span-classcharactersuzannespan-8"><span class="character">Suzanne</span></a></h5><p><span>Il faudrait m'écouter tranquillement.</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharacterfigarospan-9" id="span-classcharacterfigarospan-9"><span class="character">Figaro</span></a></h5><p><span>Eh ! qu'est-ce qu'il y a, bon Dieu ?</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharactersuzannespan-9" id="span-classcharactersuzannespan-9"><span class="character">Suzanne</span></a></h5><p><span>Il y a, mon ami, que, las de courtiser les beautés des environs, monsieur le comte Almaviva veut rentrer au château, mais non pas chez sa femme : c'est sur la tienne, entends-tu ? qu'il a jeté ses vues, auxquelles il espère que ce logement ne nuira pas.</span><span>Et c'est que le loyal Basile, honnête agent de ses plaisirs, et mon noble maître à chanter, me répète chaque jour en me donnant leçon.</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharacterfigarospan-10" id="span-classcharacterfigarospan-10"><span class="character">Figaro</span></a></h5><p><span>Basile ! ô mon mignon, si jamais volée de bois vert, appliquée sur une échine, a dûment redressé la moelle épinière à quelqu'un...</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharactersuzannespan-10" id="span-classcharactersuzannespan-10"><span class="character">Suzanne</span></a></h5><p><span>Tu croyais, bon garçon, que cette dot qu'on me donne était pour les beaux yeux de ton mérite ?</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharacterfigarospan-11" id="span-classcharacterfigarospan-11"><span class="character">Figaro</span></a></h5><p><span>J'avais assez fait pour l'esprérer.</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharactersuzannespan-11" id="span-classcharactersuzannespan-11"><span class="character">Suzanne</span></a></h5><p><span>Que les gens d'esprit sont bêtes !</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharacterfigarospan-12" id="span-classcharacterfigarospan-12"><span class="character">Figaro</span></a></h5><p><span>On le dit.</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharactersuzannespan-12" id="span-classcharactersuzannespan-12"><span class="character">Suzanne</span></a></h5><p><span>Mais c'est qu'on ne veut pas le croire !</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharacterfigarospan-13" id="span-classcharacterfigarospan-13"><span class="character">Figaro</span></a></h5><p><span>On a tort.</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharactersuzannespan-13" id="span-classcharactersuzannespan-13"><span class="character">Suzanne</span></a></h5><p><span>Apprends qu'il la destine à obtenir de moi, secrètement, certain quart d'heure, seul à seule, qu'un ancient droit du seigneur... Tu sais s'il était triste !</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharacterfigarospan-14" id="span-classcharacterfigarospan-14"><span class="character">Figaro</span></a></h5><p><span>Je le sais tellement, que si monsieur le comte, en se mariant, n'eût pas aboli ce droit honteux, jamais je ne t'eusse épousée dans ses domaines.</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharactersuzannespan-14" id="span-classcharactersuzannespan-14"><span class="character">Suzanne</span></a></h5><p><span>Eh bien ! s'il détruit, il s'en repent ; et c'est de ta fiancée qu'il veut le racheter en secret aujourd'hui.</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharacterfigarospanspan-classdirection-se-frottant-la-têtespan" id="span-classcharacterfigarospanspan-classdirection-se-frottant-la-têtespan"><span class="character">Figaro</span><span class="direction">, se frottant la tête</span></a></h5><p><span>Ma téte s'amollit de surprise, et mon front fertilisé...</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharactersuzannespan-15" id="span-classcharactersuzannespan-15"><span class="character">Suzanne</span></a></h5><p><span>Ne le frotte donc pas !</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharacterfigarospan-15" id="span-classcharacterfigarospan-15"><span class="character">Figaro</span></a></h5><p><span>Quel danger ?</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharactersuzannespanspan-classdirection-riantspan" id="span-classcharactersuzannespanspan-classdirection-riantspan"><span class="character">Suzanne</span><span class="direction">, riant</span></a></h5><p><span>S'il y venait un petit bouton, des gens superstitiuex...</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharacterfigarospan-16" id="span-classcharacterfigarospan-16"><span class="character">Figaro</span></a></h5><p><span>Tu ris, friponne ! Ah ! s'il y avait moyen d'attraper ce grand trompeur, de le faire donner dans un bon piège, et d'empocher son or !</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharactersuzannespan-16" id="span-classcharactersuzannespan-16"><span class="character">Suzanne</span></a></h5><p><span>De l'intrigue et de l'argent : te voilà dans ta sphère.</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharacterfigarospan-17" id="span-classcharacterfigarospan-17"><span class="character">Figaro</span></a></h5><p><span>Ce n'est pas la honte qui me retient.</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharactersuzannespan-17" id="span-classcharactersuzannespan-17"><span class="character">Suzanne</span></a></h5><p><span>La crainte ?</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharacterfigarospan-18" id="span-classcharacterfigarospan-18"><span class="character">Figaro</span></a></h5><p><span>Ce n'est rien d'entreprendre une chose dangereuse, mais d'échapper au péril en la menant à bien : car d'entrer chez quelqu'un la nuit, de lui souffler sa femme, et d'y recevoir cent coups de fouet pour la peine, il n'est rient plus aisé ; mille sots coquins l'ont fait. Mais...</span><span class="direction">On sonne de l'intérieur.</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharactersuzannespan-18" id="span-classcharactersuzannespan-18"><span class="character">Suzanne</span></a></h5><p><span>Voilà madame éveillée ; elle m'a bien recommandé d'être la première à lui parler le matin de mes noces.</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharacterfigarospan-19" id="span-classcharacterfigarospan-19"><span class="character">Figaro</span></a></h5><p><span>Y a-t-il encore quelque chose là-dessous ?</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharactersuzannespan-19" id="span-classcharactersuzannespan-19"><span class="character">Suzanne</span></a></h5><p><span>Le berger dit que cela porte bonheur aux épouses délaissées. Adieu, mon petit fi, fi, Figaro ; rêve à notre affaire.</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharacterfigarospan-20" id="span-classcharacterfigarospan-20"><span class="character">Figaro</span></a></h5><p><span>Pour m'ouvrir l'esprit, donne un petit baiser.</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharactersuzannespan-20" id="span-classcharactersuzannespan-20"><span class="character">Suzanne</span></a></h5><p><span>À mon amant aujourd'hui ? Je t'en souhaite ! Et qu'en dirait demain mon mari ?</span><span class="direction">Figaro l'embrasse.</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharactersuzannespan-21" id="span-classcharactersuzannespan-21"><span class="character">Suzanne</span></a></h5><p><span>Eh bien ! eh bien !</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharacterfigarospan-21" id="span-classcharacterfigarospan-21"><span class="character">Figaro</span></a></h5><p><span>C'est que tu n'as pas d'idée de mon amour.</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharactersuzannespanspan-classdirection-se-défripantspan" id="span-classcharactersuzannespanspan-classdirection-se-défripantspan"><span class="character">Suzanne</span><span class="direction">, se défripant</span></a></h5><p><span>Quand cesserez-vous, importun, de m'en parler du matin au soir ?</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharacterfigarospanspan-classdirection-mystérieusementspan" id="span-classcharacterfigarospanspan-classdirection-mystérieusementspan"><span class="character">Figaro</span><span class="direction">, mystérieusement</span></a></h5><p><span>Quand je pourrai te le prouver du soir jusqu'au matin.</span><span class="direction">On sonne une seconde fois.</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharactersuzannespanspan-classdirection-de-loin-les-doigts-unis-sur-sa-bouchespan" id="span-classcharactersuzannespanspan-classdirection-de-loin-les-doigts-unis-sur-sa-bouchespan"><span class="character">Suzanne</span><span class="direction">, de loin, les doigts unis sur sa bouche</span></a></h5><p><span>Voilà votre baiser, monsieur ; je n'ai plus rien à vous.</span></p></div>
+<div class="speech"><h5><a class="header" href="#span-classcharacterfigarospanspan-classdirection-court-aprés-ellespan" id="span-classcharacterfigarospanspan-classdirection-court-aprés-ellespan"><span class="character">Figaro</span><span class="direction"> court aprés elle</span></a></h5><p><span>Oh ! mais ce n'est pas ainsi que vous l'aves reçu.</span></p></div>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                        
+                            <a rel="prev" href="../acte_1.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+                        
+
+                        
+                            <a rel="next" href="../acte_1/scene_2.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+                        
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                
+                    <a rel="prev" href="../acte_1.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+                
+
+                
+                    <a rel="next" href="../acte_1/scene_2.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+                
+            </nav>
+
+        </div>
+
+        
+
+        
+
+        
+
+        
+        <script type="text/javascript">
+            window.playground_copyable = true;
+        </script>
+        
+
+        
+
+        
+        <script src="../elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../searcher.js" type="text/javascript" charset="utf-8"></script>
+        
+
+        <script src="../clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+        
+
+        
+
+    </body>
+</html>
