@@ -6,7 +6,7 @@ src = "src"
 title = "取返し物語"
 
 [preprocessor.playscript]
-command = "/Users/shotaro/projects/mdplayscript/target/debug/mdplayscript mdbook-preprocessor"
+command = "../../target/debug/mdplayscript mdbook-preprocessor"
 
 [output.html]
 additional-css = ["mdplayscript_ja.css"]

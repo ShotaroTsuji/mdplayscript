@@ -6,7 +6,7 @@ src = "src"
 title = "La Folle Journée"
 
 [preprocessor.playscript]
-command = "/Users/shotaro/projects/mdplayscript/target/debug/mdplayscript mdbook-preprocessor"
+command = "../../target/debug/mdplayscript mdbook-preprocessor"
 subtitle = "Le Mariage de Figaro"
 
 [output.html]
