@@ -31,6 +31,11 @@
 //! A (running)> Hello!
 //! ```
 //!
+//! Monologues are surrounded by the following directives: `<!-- playscript-monologue-begin -->`
+//! and `<!-- playscript-monologue-end -->`.
+//! The texts surrounded by the monologue directives are styled in the normal font style and the
+//! directions between the directives are styled in italic.
+//!
 //! Other forms of texts are handled as normal paragraphs.
 //!
 //! The examples above are converted into the following HTML:
@@ -48,13 +53,22 @@
 //! }
 //!
 //! assert_eq!(convert("A> Hello!"),
-//! r#"<div class="speech"><h5><span class="character">A</span></h5><p>Hello!</p></div>
+//! r#"<div class="speech"><h5><span class="character">A</span></h5><p><span>Hello!</span></p></div>
 //! "#);
 //! assert_eq!(convert("A> Hello! (some direction)"),
-//! r#"<div class="speech"><h5><span class="character">A</span></h5><p>Hello!<span class="direction">some direction</span></p></div>
+//! r#"<div class="speech"><h5><span class="character">A</span></h5><p><span>Hello!</span><span class="direction">some direction</span></p></div>
 //! "#);
 //! assert_eq!(convert("A (running)> Hello!"),
-//! r#"<div class="speech"><h5><span class="character">A</span><span class="direction">running</span></h5><p>Hello!</p></div>
+//! r#"<div class="speech"><h5><span class="character">A</span><span class="direction">running</span></h5><p><span>Hello!</span></p></div>
+//! "#);
+//! assert_eq!(convert(r#"<!-- playscript-monologue-begin -->
+//! Monologue
+//! (direction)
+//! <!-- playscript-monologue-end -->
+//! "#),
+//! r#"<!-- playscript-monologue-begin -->
+//! <div class="speech"><p><span>Monologue</span><span class="direction">direction</span></p></div>
+//! <!-- playscript-monologue-end -->
 //! "#);
 //! ```
 //!
@@ -87,9 +101,18 @@ use std::collections::VecDeque;
 use pulldown_cmark::{Event, Tag, CowStr};
 use trim_in_place::TrimInPlace;
 
+#[derive(Debug,Clone,Default)]
+pub struct MdPlayScriptOption {
+    pub title: Option<String>,
+    pub subtitle: Option<String>,
+    pub authors: Vec<String>,
+}
+
 pub struct MdPlayScript<'a, P> {
     parser: Option<P>,
     queue: VecDeque<Event<'a>>,
+    is_in_monologue: bool,
+    option: MdPlayScriptOption,
     _marker: PhantomData<&'a P>,
 }
 
@@ -98,9 +121,15 @@ where
     P: Iterator<Item=Event<'a>>,
 {
     pub fn new(parser: P) -> Self {
+        Self::with_option(parser, Default::default())
+    }
+
+    pub fn with_option(parser: P, option: MdPlayScriptOption) -> Self {
         Self {
             parser: Some(parser),
             queue: VecDeque::new(),
+            is_in_monologue: false,
+            option: option,
             _marker: PhantomData,
         }
     }
@@ -125,7 +154,11 @@ where
                 let mut speeches = Speeches::from_vec(tokener);
 
                 while let Some(speech) = speeches.next() {
-                    let events = distil(parse_speech(speech));
+                    let events = if self.is_in_monologue {
+                        distil_monologue(parse_monologue(speech))
+                    } else {
+                        distil(parse_speech(speech))
+                    };
                     for e in events.into_iter() {
                         self.queue.push_back(e);
                     }
@@ -135,18 +168,96 @@ where
 
                 self.queue.pop_front()
             },
+            Some(html @ Event::Html(_)) => {
+                match match_directive(&html) {
+                    Some(Directive::MonologueBegin) => {
+                        self.is_in_monologue = true;
+                    },
+                    Some(Directive::MonologueEnd) => {
+                        self.is_in_monologue = false;
+                    },
+                    Some(Directive::Title) => {
+                        let s = if let Some(title) = self.option.title.as_ref() {
+                            format!("<h1 class=\"cover-title\">{}</h1>\n", title)
+                        } else {
+                            String::new()
+                        };
+                        return Some(Event::Html(s.into()));
+                    },
+                    Some(Directive::Subtitle) => {
+                        let s = if let Some(title) = self.option.subtitle.as_ref() {
+                            format!("<h2 class=\"cover-title\">{}</h2>\n", title)
+                        } else {
+                            String::new()
+                        };
+                        return Some(Event::Html(s.into()));
+                    },
+                    Some(Directive::Authors) => {
+                        if self.option.authors.len() > 0 {
+                            let mut s = String::new();
+                            for author in self.option.authors.iter() {
+                                s += "<p class=\"cover-author\">";
+                                s += author;
+                                s += "</p>\n";
+                            }
+                            return Some(Event::Html(s.into()));
+                        }
+                    },
+                    None => {},
+                }
+
+                Some(html)
+            },
             Some(event) => Some(event),
             None => None,
         }
     }
 }
 
+#[derive(Debug,Clone,PartialEq)]
+enum Directive {
+    MonologueBegin,
+    MonologueEnd,
+    Title,
+    Subtitle,
+    Authors,
+}
+
+fn match_directive<'a>(event: &Event<'a>) -> Option<Directive> {
+    let s = match event {
+        Event::Html(s) => s.as_ref(),
+        _ => return None,
+    };
+
+    let s = s.replace("<!--", "");
+    let s = s.trim_start();
+
+    let s = s.replace("playscript-", "");
+
+    if s.starts_with("monologue-begin") {
+        return Some(Directive::MonologueBegin);
+    } else if s.starts_with("monologue-end") {
+        return Some(Directive::MonologueEnd);
+    } else if s.starts_with("title") {
+        return Some(Directive::Title);
+    } else if s.starts_with("subtitle") {
+        return Some(Directive::Subtitle);
+    } else if s.starts_with("authors") {
+        return Some(Directive::Authors);
+    }
+
+    None
+}
+
 const PARA_START: Event<'static> = Event::Html(CowStr::Borrowed("<p>"));
 const PARA_END: Event<'static> = Event::Html(CowStr::Borrowed("</p>"));
+const P_START: Event<'static> = Event::Start(Tag::Paragraph);
+const P_END: Event<'static> = Event::End(Tag::Paragraph);
 const H5_START: Event<'static> = Event::Html(CowStr::Borrowed("<h5>"));
 const H5_END: Event<'static> = Event::Html(CowStr::Borrowed("</h5>"));
 const DIV_SPEECH: Event<'static> = Event::Html(CowStr::Borrowed(r#"<div class="speech">"#));
 const DIV_END: Event<'static> = Event::Html(CowStr::Borrowed("</div>"));
+const SPAN_START: Event<'static> = Event::Html(CowStr::Borrowed("<span>"));
 const SPAN_CHARACTER: Event<'static> = Event::Html(CowStr::Borrowed(r#"<span class="character">"#));
 const SPAN_DIRECTION: Event<'static> = Event::Html(CowStr::Borrowed(r#"<span class="direction">"#));
 const SPAN_END: Event<'static> = Event::Html(CowStr::Borrowed("</span>"));
@@ -157,6 +268,20 @@ fn trim_end_of_top<'a>(events: &mut Vec<Event<'a>>) {
             let mut s = s.into_string();
             TrimInPlace::trim_end_in_place(&mut s);
             events.push(Event::Text(s.into()));
+        },
+        Some(h @ Event::Html(_)) if h == SPAN_START || h == SPAN_END => {
+            match events.pop() {
+                Some(Event::Text(s)) => {
+                    let mut s = s.into_string();
+                    TrimInPlace::trim_end_in_place(&mut s);
+                    events.push(Event::Text(s.into()));
+                },
+                Some(e) => {
+                    events.push(e);
+                },
+                _ => {},
+            }
+            events.push(h);
         },
         Some(e) => {
             events.push(e);
@@ -170,17 +295,32 @@ fn distil_speech<'a>(terms: Vec<Term<'a>>) -> Vec<Event<'a>> {
     let mut terms = terms.into_iter();
 
     let mut trim_start = false;
+    let mut text_needs_span = true;
 
     while let Some(term) = terms.next() {
         match term {
             Term::HeadingStart => {
                 events.push(H5_START.clone());
                 trim_start = false;
+                text_needs_span = false;
             },
             Term::HeadingEnd => {
                 events.push(H5_END.clone());
-                events.push(PARA_START.clone());
                 trim_start = true;
+                text_needs_span = true;
+            },
+            Term::BodyStart => {
+                events.push(PARA_START.clone());
+            },
+            Term::BodyEnd => {
+                match events.last() {
+                    Some(e) if e == &PARA_START => {
+                        let _ = events.pop();
+                    },
+                    _ => {
+                        events.push(PARA_END.clone());
+                    },
+                }
             },
             Term::Character(mut s) => {
                 TrimInPlace::trim_in_place(&mut s);
@@ -192,33 +332,52 @@ fn distil_speech<'a>(terms: Vec<Term<'a>>) -> Vec<Event<'a>> {
             Term::DirectionStart => {
                 trim_end_of_top(&mut events);
                 events.push(SPAN_DIRECTION.clone());
-                trim_start = true;
+                trim_start = false;
+                text_needs_span = false;
             },
             Term::DirectionEnd => {
                 trim_end_of_top(&mut events);
                 events.push(SPAN_END.clone());
                 trim_start = true;
+                text_needs_span = true;
             },
             Term::Text(mut s) => {
                 if trim_start {
                     TrimInPlace::trim_start_in_place(&mut s);
                 }
                 if s.len() > 0 {
+                    if text_needs_span {
+                        events.push(SPAN_START.clone());
+                    }
+
                     events.push(Event::Text(s.into()));
+
+                    if text_needs_span {
+                        events.push(SPAN_END.clone());
+                    }
                 }
             },
+            Term::Event(Event::SoftBreak) => {},
             Term::Event(e) => {
                 events.push(e);
             },
         }
     }
 
-    events.push(PARA_END.clone());
     events.push(DIV_END.clone());
     events.push(Event::SoftBreak);
 
     events
 }
+
+fn distil_monologue<'a>(terms: Vec<Term<'a>>) -> Vec<Event<'a>> {
+    if terms.len() == 0 {
+        Vec::new()
+    } else {
+        distil_speech(terms)
+    }
+}
+
 
 fn distil<'a>(terms: Vec<Term<'a>>) -> Vec<Event<'a>> {
     if terms.len() == 0 {
@@ -227,15 +386,15 @@ fn distil<'a>(terms: Vec<Term<'a>>) -> Vec<Event<'a>> {
 
     let (mut events, mut close) = match terms.get(0) {
         Some(Term::HeadingStart) => return distil_speech(terms),
-        _ => (vec![PARA_START.clone()], vec![PARA_END.clone()]),
+        _ => (vec![P_START.clone()], vec![P_END.clone()]),
     };
 
     let mut trim_start = false;
 
     for term in terms.into_iter() {
         match term {
-            Term::HeadingStart |
-            Term::HeadingEnd |
+            Term::HeadingStart | Term::HeadingEnd |
+                Term::BodyStart | Term::BodyEnd |
             Term::Character(_) => unreachable!(),
             Term::Text(mut text) => {
                 if trim_start {
@@ -256,6 +415,7 @@ fn distil<'a>(terms: Vec<Term<'a>>) -> Vec<Event<'a>> {
                 events.push(SPAN_END.clone());
                 trim_start = true;
             },
+            Term::Event(Event::SoftBreak) => {},
             Term::Event(e) => {
                 events.push(e);
                 trim_start = false;
@@ -272,6 +432,8 @@ fn distil<'a>(terms: Vec<Term<'a>>) -> Vec<Event<'a>> {
 enum Term<'a> {
     HeadingStart,
     HeadingEnd,
+    BodyStart,
+    BodyEnd,
     DirectionStart,
     DirectionEnd,
     Character(String),
@@ -324,22 +486,36 @@ fn parse_direction_in_speech<'a>(line: &mut VecDeque<Token<'a>>, terms: &mut Vec
     }
 }
 
-fn parse_speech_line<'a>(line: Vec<Token<'a>>) -> Vec<Term<'a>> {
-    let mut terms = Vec::new();
-    let mut line: VecDeque<_> = line.into();
-
-    parse_speech_heading(&mut line, &mut terms);
-
+fn parse_speech_body<'a>(line: &mut VecDeque<Token<'a>>, terms: &mut Vec<Term<'a>>) {
+    terms.push(Term::BodyStart);
     while let Some(token) = line.pop_front() {
         match token {
             Token::Text(TextToken::Left) => {
-                parse_direction_in_speech(&mut line, &mut terms);
+                parse_direction_in_speech(line, terms);
             },
             t => {
                 terms.push(token_to_term(t, true));
             },
         }
     }
+    terms.push(Term::BodyEnd);
+}
+
+fn parse_speech_line<'a>(line: Vec<Token<'a>>) -> Vec<Term<'a>> {
+    let mut terms = Vec::new();
+    let mut line: VecDeque<_> = line.into();
+
+    parse_speech_heading(&mut line, &mut terms);
+    parse_speech_body(&mut line, &mut terms);
+
+    terms
+}
+
+fn parse_monologue<'a>(line: Vec<Token<'a>>) -> Vec<Term<'a>> {
+    let mut terms = vec![];
+    let mut line: VecDeque<_> = line.into();
+
+    parse_speech_body(&mut line, &mut terms);
 
     terms
 }
@@ -854,6 +1030,8 @@ Third"#;
             Term::HeadingStart,
             Term::Character("Young Syrian".to_owned()),
             Term::HeadingEnd,
+            Term::BodyStart,
+            Term::BodyEnd,
         ]);
 
         let events = distil(terms);
@@ -864,8 +1042,6 @@ Third"#;
             Event::Text("Young Syrian".into()),
             SPAN_END,
             H5_END,
-            PARA_START,
-            PARA_END,
             DIV_END,
             Event::SoftBreak,
         ]);
@@ -889,7 +1065,9 @@ Third"#;
             Term::Text("Running".to_owned()),
             Term::DirectionEnd,
             Term::HeadingEnd,
+            Term::BodyStart,
             Term::Text(" Hello!".to_owned()),
+            Term::BodyEnd,
         ]);
     }
 
@@ -905,12 +1083,14 @@ Third"#;
             Term::HeadingStart,
             Term::Character("A".to_owned()),
             Term::HeadingEnd,
+            Term::BodyStart,
             Term::Text(" ".to_owned()),
             Term::DirectionStart,
             Term::Text("Writing ".to_owned()),
             Term::Event(Event::Code("x".into())),
             Term::DirectionEnd,
             Term::Text(" What?".to_owned()),
+            Term::BodyEnd,
         ]);
     }
 
@@ -926,6 +1106,7 @@ Third"#;
             Term::HeadingStart,
             Term::Character("A".to_owned()),
             Term::HeadingEnd,
+            Term::BodyStart,
             Term::Text(" ".to_owned()),
             Term::DirectionStart,
             Term::Text("Writing ".to_owned()),
@@ -934,6 +1115,7 @@ Third"#;
             Term::Event(Event::End(Tag::Emphasis)),
             Term::DirectionEnd,
             Term::Text(" What?".to_owned()),
+            Term::BodyEnd,
         ]);
     }
 
@@ -956,12 +1138,12 @@ A> What? (__Turning (x)__)  "#;
             SPAN_END,
             H5_END,
             PARA_START,
+            SPAN_START,
             Event::Text("Hello!".into()),
-            Event::SoftBreak,
-            SPAN_DIRECTION,
-            Event::Text("Turning to audience".into()),
             SPAN_END,
-            Event::SoftBreak,
+            SPAN_DIRECTION,
+            Event::Text(" Turning to audience".into()),
+            SPAN_END,
             PARA_END,
             DIV_END,
             Event::SoftBreak,
@@ -975,8 +1157,9 @@ A> What? (__Turning (x)__)  "#;
             SPAN_END,
             H5_END,
             PARA_START,
+            SPAN_START,
             Event::Text("Bye!".into()),
-            Event::SoftBreak,
+            SPAN_END,
             PARA_END,
             DIV_END,
             Event::SoftBreak,
@@ -990,7 +1173,9 @@ A> What? (__Turning (x)__)  "#;
             SPAN_END,
             H5_END,
             PARA_START,
+            SPAN_START,
             Event::Text("What?".into()),
+            SPAN_END,
             SPAN_DIRECTION,
             Event::Start(Tag::Strong),
             Event::Text("Turning (x)".into()),
@@ -1034,7 +1219,9 @@ A> What? (__Turning (x)__)  "#;
             SPAN_END,
             H5_END,
             PARA_START,
+            SPAN_START,
             Event::Text("Hello!".into()),
+            SPAN_END,
             PARA_END,
             DIV_END,
             Event::SoftBreak,
@@ -1061,7 +1248,9 @@ A> What? (__Turning (x)__)  "#;
             SPAN_END,
             H5_END,
             PARA_START,
+            SPAN_START,
             Event::Text("Hello!".into()),
+            SPAN_END,
             PARA_END,
             DIV_END,
             Event::SoftBreak,
@@ -1081,9 +1270,133 @@ A> What? (__Turning (x)__)  "#;
 
         let events = distil(parse_speech(speech));
         assert_eq!(events, vec![
-            PARA_START,
+            P_START,
             Event::Text("Hello!".into()),
-            PARA_END,
+            P_END,
         ]);
+    }
+
+    #[test]
+    fn monologue_begin_directive() {
+        let s = "<!-- monologue-begin -->";
+
+        let mut parser = Parser::new(s);
+        let event = parser.next().unwrap();
+        assert_eq!(match_directive(&event), Some(Directive::MonologueBegin));
+    }
+
+    #[test]
+    fn monologue_end_directive() {
+        let s = "<!-- monologue-end -->";
+
+        let mut parser = Parser::new(s);
+        let event = parser.next().unwrap();
+        assert_eq!(match_directive(&event), Some(Directive::MonologueEnd));
+    }
+
+    #[test]
+    fn monologue_example() {
+        let s = r#"<!-- monologue-begin -->
+Monologue 1 ( direction )
+
+Monologue (direction) Monologue
+<!-- monologue-end -->
+"#;
+
+        let mut parser = Parser::new(s);
+        let begin = parser.next().unwrap();
+        assert_eq!(match_directive(&begin), Some(Directive::MonologueBegin));
+
+        assert_eq!(parser.next(), Some(PARA_TAG_START));
+
+        let (tokens, parser) = EventTokener::read_paragraph(&mut parser);
+        let mut speeches = Speeches::from_vec(tokens);
+        let speech = speeches.next().unwrap();
+
+        let events = distil_monologue(parse_monologue(speech));
+        assert_eq!(events, vec![
+            DIV_SPEECH,
+            PARA_START,
+            SPAN_START,
+            Event::Text(CowStr::Borrowed("Monologue 1")),
+            SPAN_END,
+            SPAN_DIRECTION,
+            Event::Text(CowStr::Borrowed(" direction")),
+            SPAN_END,
+            PARA_END,
+            DIV_END,
+            Event::SoftBreak,
+        ]);
+
+        assert_eq!(parser.next(), Some(PARA_TAG_START));
+
+        let (tokens, parser) = EventTokener::read_paragraph(parser);
+        let mut speeches = Speeches::from_vec(tokens);
+        let speech = speeches.next().unwrap();
+
+        let events = distil_monologue(parse_monologue(speech));
+        assert_eq!(events, vec![
+            DIV_SPEECH,
+            PARA_START,
+            SPAN_START,
+            Event::Text(CowStr::Borrowed("Monologue")),
+            SPAN_END,
+            SPAN_DIRECTION,
+            Event::Text(CowStr::Borrowed("direction")),
+            SPAN_END,
+            SPAN_START,
+            Event::Text(CowStr::Borrowed("Monologue")),
+            SPAN_END,
+            PARA_END,
+            DIV_END,
+            Event::SoftBreak,
+        ]);
+
+        let end = parser.next().unwrap();
+        assert_eq!(match_directive(&end), Some(Directive::MonologueEnd));
+    }
+
+    //#[test]
+    fn speech_with_multi_lines() {
+        let s = "A ( Running)> Hello!\nMaam.\nGoodbye!";
+
+        let mut parser = Parser::new(s);
+        assert_eq!(parser.next(), Some(PARA_TAG_START));
+        let (tokens, _) = EventTokener::read_paragraph(parser);
+        let mut speeches = Speeches::from_vec(tokens);
+
+        let speech = speeches.next().unwrap();
+
+        /*
+        assert_eq!(speech, vec![
+            Token::Text(TextToken::Text("A ".into())),
+            Token::Text(TextToken::Left),
+            Token::Text(TextToken::Text("Running".into())),
+            Token::Text(TextToken::Right),
+            Token::Text(TextToken::Rangle),
+            Token::Text(TextToken::Text(" Hello!".into())),
+        ]);
+        */
+
+        let events = parse_speech(speech);
+        let events = distil(events);
+        assert_eq!(events, vec![]);
+    }
+
+    #[test]
+    fn title_and_authors() {
+        let s = "<!-- playscript-title -->\n<!-- playscript-authors -->";
+        let opt = MdPlayScriptOption {
+            title: Some("Title".to_owned()),
+            subtitle: None,
+            authors: vec!["Author".to_owned(), "B".to_owned()],
+        };
+        let p = MdPlayScript::with_option(Parser::new(s), opt);
+        let mut buf = String::new();
+        pulldown_cmark::html::push_html(&mut buf, p);
+        assert_eq!(buf, r#"<h1 class="cover-title">Title</h1>
+<p class="cover-author">Author</p>
+<p class="cover-author">B</p>
+"#);
     }
 }

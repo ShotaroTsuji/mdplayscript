@@ -1,0 +1,12 @@
+[book]
+authors = ["岡本かの子"]
+language = "ja"
+multilingual = false
+src = "src"
+title = "取返し物語"
+
+[preprocessor.playscript]
+command = "../../target/debug/mdplayscript mdbook-preprocessor"
+
+[output.html]
+additional-css = ["mdplayscript_ja.css"]
