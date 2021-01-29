@@ -31,6 +31,11 @@
 //! A (running)> Hello!
 //! ```
 //!
+//! Monologues are surrounded by the following directives: `<!-- playscript-monologue-begin -->`
+//! and `<!-- playscript-monologue-end -->`.
+//! The texts surrounded by the monologue directives are styled in the normal font style and the
+//! directions between the directives are styled in italic.
+//!
 //! Other forms of texts are handled as normal paragraphs.
 //!
 //! The examples above are converted into the following HTML:
