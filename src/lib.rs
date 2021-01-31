@@ -812,12 +812,12 @@ impl<'a> Iterator for TextTokenizer<'a> {
 }
 
 
-fn find_one_of(s: &str, ps: &str) -> Option<(usize, char)> {
+pub fn find_one_of(s: &str, ps: &str) -> Option<(usize, char)> {
     s.char_indices()
         .find(|(_, c)| ps.contains(*c))
 }
 
-fn find_puncts_end(s: &str, p: char) -> (&str, &str) {
+pub fn find_puncts_end(s: &str, p: char) -> (&str, &str) {
     assert!(s.starts_with(p));
 
     for (index, c) in s.char_indices() {
