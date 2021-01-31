@@ -8,6 +8,9 @@ It is implemented as a filter for `Parser` of pulldown-cmark crate.
 The goal of this parser is emit an HTML document.
 Thus it is recommended to pass the parser to `pulldown_cmark::html::push_html` or `write_html`.
 
+An implementation of mdbook preprocessor of this crate is
+[mdbook-playscript](https://github.com/ShotaroTsuji/mdbook-preprocessor).
+
 ## Example
 
 ### Play script format
@@ -33,6 +36,11 @@ No space is allowed between the right parenthesis and the right angle.
 A (running)> Hello!
 ```
 
+Monologues are surrounded by the following directives: `<!-- playscript-monologue-begin -->`
+and `<!-- playscript-monologue-end -->`.
+The texts surrounded by the monologue directives are styled in the normal font style and the
+directions between the directives are styled in italic.
+
 Other forms of texts are handled as normal paragraphs.
 
 The examples above are converted into the following HTML:
@@ -50,13 +58,22 @@ fn convert(s: &str) -> String {
 }
 
 assert_eq!(convert("A> Hello!"),
-r#"<div class="speech"><h5><span class="character">A</span></h5><p>Hello!</p></div>
+r#"<div class="speech"><h5><span class="character">A</span></h5><p><span>Hello!</span></p></div>
 "#);
 assert_eq!(convert("A> Hello! (some direction)"),
-r#"<div class="speech"><h5><span class="character">A</span></h5><p>Hello!<span class="direction">some direction</span></p></div>
+r#"<div class="speech"><h5><span class="character">A</span></h5><p><span>Hello!</span><span class="direction">some direction</span></p></div>
 "#);
 assert_eq!(convert("A (running)> Hello!"),
-r#"<div class="speech"><h5><span class="character">A</span><span class="direction">running</span></h5><p>Hello!</p></div>
+r#"<div class="speech"><h5><span class="character">A</span><span class="direction">running</span></h5><p><span>Hello!</span></p></div>
+"#);
+assert_eq!(convert(r#"<!-- playscript-monologue-begin -->
+Monologue
+(direction)
+<!-- playscript-monologue-end -->
+"#),
+r#"<!-- playscript-monologue-begin -->
+<div class="speech"><p><span>Monologue</span><span class="direction">direction</span></p></div>
+<!-- playscript-monologue-end -->
 "#);
 ```
 
@@ -77,7 +94,6 @@ The output file is
 
 ## ToDo
 
-- [ ] Make a function like `mdbook build`.
 - [ ] Refactor test codes
 
 ## License

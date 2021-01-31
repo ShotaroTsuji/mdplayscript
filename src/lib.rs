@@ -6,6 +6,9 @@
 //! The goal of this parser is emit an HTML document.
 //! Thus it is recommended to pass the parser to `pulldown_cmark::html::push_html` or `write_html`.
 //!
+//! An implementation of mdbook preprocessor of this crate is
+//! [mdbook-playscript](https://github.com/ShotaroTsuji/mdbook-preprocessor).
+//!
 //! # Example
 //!
 //! ## Play script format
@@ -89,7 +92,6 @@
 //!
 //! # ToDo
 //!
-//! - [ ] Make a function like `mdbook build`.
 //! - [ ] Refactor test codes
 //!
 //! # License
