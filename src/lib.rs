@@ -103,6 +103,9 @@ use std::collections::VecDeque;
 use pulldown_cmark::{Event, Tag, CowStr};
 use trim_in_place::TrimInPlace;
 
+pub mod parser;
+pub mod speech;
+
 #[derive(Debug,Clone,Default)]
 pub struct MdPlayScriptOption {
     pub title: Option<String>,
