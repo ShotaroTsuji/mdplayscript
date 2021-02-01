@@ -24,3 +24,4 @@ rust-embed = { version = "5.9.0", features = ["interpolate-folder-path"] }
 
 [dev-dependencies]
 toml = "0.5.8"
+big_s = "1.0.2"
