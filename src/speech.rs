@@ -5,14 +5,14 @@ use crate::parser::split_speech_heading;
 
 #[derive(Debug,Clone,PartialEq)]
 pub struct Speech<'a> {
-    heading: Heading<'a>,
-    body: Vec<Inline<'a>>,
+    pub heading: Heading<'a>,
+    pub body: Vec<Inline<'a>>,
 }
 
 #[derive(Debug,Clone,PartialEq)]
 pub struct Heading<'a> {
-    character: CowStr<'a>,
-    direction: Direction<'a>,
+    pub character: CowStr<'a>,
+    pub direction: Direction<'a>,
 }
 
 #[derive(Debug,Clone,PartialEq)]
@@ -22,7 +22,7 @@ pub enum Inline<'a> {
 }
 
 #[derive(Debug,Clone,PartialEq)]
-pub struct Direction<'a>(Vec<Event<'a>>);
+pub struct Direction<'a>(pub Vec<Event<'a>>);
 
 impl<'a> Direction<'a> {
     pub fn new() -> Self {

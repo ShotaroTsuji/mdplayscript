@@ -105,6 +105,7 @@ use trim_in_place::TrimInPlace;
 
 pub mod parser;
 pub mod speech;
+pub mod renderer;
 
 #[derive(Debug,Clone,Default)]
 pub struct MdPlayScriptOption {
