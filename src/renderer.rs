@@ -21,12 +21,31 @@ impl Default for HtmlRenderer {
 }
 
 impl HtmlRenderer {
-    pub fn render_direction<'a>(&self, direction: Direction<'a>) -> Vec<Event<'a>> {
+    pub fn render_heading<'a>(&self, heading: Heading<'a>, events: &mut Vec<Event<'a>>) {
+        let h_start = "<h5>";
+        let span_start = format!("<span class=\"{}\">", self.character_class);
+        let span_end = "</span>";
+        let h_end = "</h5>";
+
+        events.push(Event::Html(h_start.into()));
+        events.push(Event::Html(span_start.into()));
+        events.push(Event::Text(heading.character));
+        events.push(Event::Html(span_end.into()));
+        self.render_direction(heading.direction, events);
+        events.push(Event::Html(h_end.into()));
+    }
+
+    pub fn render_direction<'a>(&self, direction: Direction<'a>, events: &mut Vec<Event<'a>>) {
         let direction = direction.0;
         let len = direction.len();
-        let mut events = Vec::with_capacity(len+2);
+
+        if len == 0 {
+            return;
+        }
+
         let span_begin = format!("<span class=\"{}\">", self.direction_class);
         let span_end = "</span>";
+
         events.push(Event::Html(span_begin.into()));
 
         for (index, inline) in direction.into_iter().enumerate() {
@@ -49,8 +68,6 @@ impl HtmlRenderer {
         }
 
         events.push(Event::Html(span_end.into()));
-
-        events
     }
 }
 
@@ -64,13 +81,14 @@ mod test {
         let input = vec![
             Event::Text(" running ".into()),
         ];
-        let output = vec![
+        let expected = vec![
             Event::Html(r#"<span class="direction">"#.into()),
             Event::Text("running".into()),
             Event::Html("</span>".into()),
         ];
-        let r = HtmlRenderer::default();
-        assert_eq!(r.render_direction(Direction(input)), output);
+        let mut result = Vec::new();
+        HtmlRenderer::default().render_direction(Direction(input), &mut result);
+        assert_eq!(result, expected);
     }
 
     #[test]
@@ -82,7 +100,7 @@ mod test {
             Event::End(Tag::Emphasis),
             Event::Text(" ccc ".into()),
         ];
-        let output = vec![
+        let expected = vec![
             Event::Html(r#"<span class="direction">"#.into()),
             Event::Text("aaa ".into()),
             Event::Start(Tag::Emphasis),
@@ -91,7 +109,47 @@ mod test {
             Event::Text(" ccc".into()),
             Event::Html("</span>".into()),
         ];
-        let r = HtmlRenderer::default();
-        assert_eq!(r.render_direction(Direction(input)), output);
+        let mut result = Vec::new();
+        HtmlRenderer::default().render_direction(Direction(input), &mut result);
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn render_heading_of_only_character_to_html() {
+        let input = Heading {
+            character: "A".into(),
+            direction: Direction::new(),
+        };
+        let expected = vec![
+            Event::Html("<h5>".into()),
+            Event::Html("<span class=\"character\">".into()),
+            Event::Text("A".into()),
+            Event::Html("</span>".into()),
+            Event::Html("</h5>".into()),
+        ];
+        let mut result = Vec::new();
+        HtmlRenderer::default().render_heading(input, &mut result);
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn render_heading_with_direction() {
+        let input = Heading {
+            character: "A".into(),
+            direction: Direction(vec![Event::Text("running".into())]),
+        };
+        let expected = vec![
+            Event::Html("<h5>".into()),
+            Event::Html("<span class=\"character\">".into()),
+            Event::Text("A".into()),
+            Event::Html("</span>".into()),
+            Event::Html("<span class=\"direction\">".into()),
+            Event::Text("running".into()),
+            Event::Html("</span>".into()),
+            Event::Html("</h5>".into()),
+        ];
+        let mut result = Vec::new();
+        HtmlRenderer::default().render_heading(input, &mut result);
+        assert_eq!(result, expected);
     }
 }
