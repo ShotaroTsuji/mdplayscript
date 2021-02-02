@@ -34,7 +34,7 @@ impl<'a> Direction<'a> {
     }
 }
 
-fn parse_speech<'a>(events: Vec<Event<'a>>) -> Option<Speech<'a>> {
+pub fn parse_speech<'a>(events: Vec<Event<'a>>) -> Option<Speech<'a>> {
     let mut iter = events.into_iter();
 
     let first = iter.next();
@@ -64,7 +64,7 @@ fn parse_speech<'a>(events: Vec<Event<'a>>) -> Option<Speech<'a>> {
     })
 }
 
-fn parse_heading(s: &str) -> Heading<'static> {
+pub fn parse_heading(s: &str) -> Heading<'static> {
     let open_paren = match s.find('(') {
         Some(pos) => pos,
         None => {
@@ -96,7 +96,7 @@ fn parse_heading(s: &str) -> Heading<'static> {
     }
 }
 
-fn parse_body<'a>(events: Vec<Event<'a>>) -> Vec<Inline<'a>> {
+pub fn parse_body<'a>(events: Vec<Event<'a>>) -> Vec<Inline<'a>> {
     let mut body = Vec::new();
     let mut direction = Vec::new();
     let mut paren_level = 0usize;
@@ -143,7 +143,7 @@ fn parse_body<'a>(events: Vec<Event<'a>>) -> Vec<Inline<'a>> {
         body.push(Inline::Direction(direction));
     }
 
-    body
+    trim_start_of_line_head(body)
 }
 
 #[derive(Debug)]
@@ -337,7 +337,7 @@ mod test {
                 direction: Direction(vec![Event::Text("running".into())]),
             },
             body: vec![
-                Inline::Event(Event::Text(" Hello! ".into())),
+                Inline::Event(Event::Text("Hello! ".into())),
                 Inline::Direction(Direction(vec![
                         Event::Text("exit".into()),
                 ])),
