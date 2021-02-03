@@ -21,6 +21,18 @@ impl Default for HtmlRenderer {
 }
 
 impl HtmlRenderer {
+    pub fn render_speech<'a>(&self, speech: Speech<'a>, events: &mut Vec<Event<'a>>) {
+        let div_start = format!("<div class=\"{}\">", self.speech_class);
+        let div_end = "</div>";
+        
+        events.push(Event::Html(div_start.into()));
+
+        self.render_heading(speech.heading, events);
+        self.render_body(speech.body, events);
+
+        events.push(Event::Html(div_end.into()));
+    }
+
     pub fn render_heading<'a>(&self, heading: Heading<'a>, events: &mut Vec<Event<'a>>) {
         let h_start = "<h5>";
         let span_start = format!("<span class=\"{}\">", self.character_class);
