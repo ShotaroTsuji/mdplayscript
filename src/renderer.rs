@@ -74,6 +74,11 @@ impl HtmlRenderer {
         let mut to_be_trimmed_start = false;
         let mut event_count = 0usize;
 
+        let mut body = body;
+        if let Some(s) = self.replace_softbreak {
+            replace_softbreaks(&mut body, s.to_owned());
+        }
+
         events.push(Event::Html("<p>".into()));
 
         for inline in body.into_iter() {
@@ -110,6 +115,10 @@ impl HtmlRenderer {
             }
         }
 
+        if event_count > 0 {
+            events.push(Event::Html("</span>".into()));
+        }
+
         events.push(Event::Html("</p>".into()));
     }
 }
@@ -124,6 +133,18 @@ fn trim_end_of_last<'a>(events: &mut Vec<Event<'a>>) {
             events.push(event);
         },
         None => {},
+    }
+}
+
+fn replace_softbreaks<'a>(inlines: &mut Vec<Inline<'a>>, s: String) {
+    for inline in inlines.iter_mut() {
+        match *inline {
+            Inline::Event(Event::SoftBreak) => {
+                let s = s.clone();
+                *inline = Inline::Event(Event::Text(s.into()));
+            },
+            _ => {},
+        }
     }
 }
 
@@ -225,6 +246,60 @@ mod test {
             Event::Text("run".into()),
             Event::Html("</span>".into()),
             Event::Html("<span>".into()),
+            Event::Text("Hello!".into()),
+            Event::Html("</span>".into()),
+            Event::Html("</p>".into()),
+        ];
+        let mut result = Vec::new();
+        HtmlRenderer::default().render_body(input, &mut result);
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn render_body_with_softbreaks_to_html() {
+        let input = vec![
+            Inline::Event(Event::Text("Hello!".into())),
+            Inline::Event(Event::SoftBreak),
+            Inline::Event(Event::Text("Hello!".into())),
+            Inline::Event(Event::SoftBreak),
+            Inline::Event(Event::Text("Hello!".into())),
+        ];
+        let expected = vec![
+            Event::Html("<p>".into()),
+            Event::Html("<span>".into()),
+            Event::Text("Hello!".into()),
+            Event::Text(" ".into()),
+            Event::Text("Hello!".into()),
+            Event::Text(" ".into()),
+            Event::Text("Hello!".into()),
+            Event::Html("</span>".into()),
+            Event::Html("</p>".into()),
+        ];
+        let mut result = Vec::new();
+        HtmlRenderer::default().render_body(input, &mut result);
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn render_body_with_softbreaks_and_direction_to_html() {
+        let input = vec![
+            Inline::Event(Event::Text("Hello!".into())),
+            Inline::Event(Event::SoftBreak),
+            Inline::Direction(Direction(vec![Event::Text("running".into())])),
+            Inline::Event(Event::SoftBreak),
+            Inline::Event(Event::Text("Hello!".into())),
+        ];
+        let expected = vec![
+            Event::Html("<p>".into()),
+            Event::Html("<span>".into()),
+            Event::Text("Hello!".into()),
+            Event::Text("".into()),
+            Event::Html("</span>".into()),
+            Event::Html("<span class=\"direction\">".into()),
+            Event::Text("running".into()),
+            Event::Html("</span>".into()),
+            Event::Html("<span>".into()),
+            Event::Text("".into()),
             Event::Text("Hello!".into()),
             Event::Html("</span>".into()),
             Event::Html("</p>".into()),
