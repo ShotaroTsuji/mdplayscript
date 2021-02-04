@@ -200,7 +200,9 @@ where
                                 self.renderer.render_body(monologue, &mut html);
                                 wrap_by_div_speech(html)
                             } else {
-                                wrap_by_paragraph_tag(para)
+                                let mut output = Vec::new();
+                                self.renderer.render_events(para, &mut output);
+                                wrap_by_paragraph_tag(output)
                             }
                         },
                     };

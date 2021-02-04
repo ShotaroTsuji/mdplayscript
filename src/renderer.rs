@@ -87,9 +87,7 @@ impl HtmlRenderer {
         let mut event_count = 0usize;
 
         let mut body = body;
-        if let Some(s) = self.replace_softbreak.as_ref() {
-            replace_softbreaks(&mut body, s.to_owned());
-        }
+        replace_softbreaks(&mut body, self.replace_softbreak.as_ref());
 
         events.push(Event::Html("<p>".into()));
 
@@ -133,6 +131,23 @@ impl HtmlRenderer {
 
         events.push(Event::Html("</p>".into()));
     }
+
+    pub fn render_events<'a>(&self, events: Vec<Event<'a>>, output: &mut Vec<Event<'a>>) {
+        let mut events: Vec<Inline<'a>> = events.into_iter()
+            .map(|e| Inline::Event(e))
+            .collect();
+
+        replace_softbreaks(&mut events, self.replace_softbreak.as_ref());
+
+        for e in events.into_iter() {
+            match e {
+                Inline::Event(e) => {
+                    output.push(e);
+                },
+                _ => {},
+            }
+        }
+    }
 }
 
 fn trim_end_of_last<'a>(events: &mut Vec<Event<'a>>) {
@@ -148,7 +163,12 @@ fn trim_end_of_last<'a>(events: &mut Vec<Event<'a>>) {
     }
 }
 
-fn replace_softbreaks<'a>(inlines: &mut Vec<Inline<'a>>, s: String) {
+pub fn replace_softbreaks<'a>(inlines: &mut Vec<Inline<'a>>, s: Option<&String>) {
+    if s.is_none() {
+        return;
+    }
+    let s = s.unwrap();
+
     for inline in inlines.iter_mut() {
         match *inline {
             Inline::Event(Event::SoftBreak) => {
