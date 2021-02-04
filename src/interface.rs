@@ -27,7 +27,7 @@ impl Mode {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub struct Options {
     replace_softbreaks_with: Option<String>,
     disabled_in_default: bool,
@@ -51,14 +51,14 @@ impl Options {
     }
 }
 
-#[derive(Debug,Default)]
+#[derive(Debug,Default,Clone)]
 pub struct Params {
     pub title: Option<String>,
     pub subtitle: Option<String>,
     pub authors: Vec<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub struct MdPlayScriptBuilder {
     options: Option<Options>,
     params: Option<Params>,
