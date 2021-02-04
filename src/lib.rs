@@ -67,8 +67,7 @@
 //! <!-- playscript-monologue-end -->
 //! "#),
 //! r#"<!-- playscript-monologue-begin -->
-//! <div class="speech"><p><span>Monologue</span><span class="direction">direction</span></p></div>
-//! <!-- playscript-monologue-end -->
+//! <div class="speech"><p><span>Monologue</span><span class="direction">direction</span></p></div><!-- playscript-monologue-end -->
 //! "#);
 //! ```
 //!
