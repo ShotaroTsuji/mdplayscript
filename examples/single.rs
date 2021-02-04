@@ -3,7 +3,7 @@ use std::fs::File;
 use std::io::Read;
 use structopt::StructOpt;
 use pulldown_cmark::Parser;
-use mdplayscript::MdPlayScript;
+use mdplayscript::interface::{MdPlayScriptBuilder, Options};
 
 fn html_prelude(title: &str, lang: &str) -> String {
     let cssfile = if lang == "ja" {
@@ -52,11 +52,20 @@ fn read_file<P: AsRef<Path>>(path: P) -> String {
     text
 }
 
-fn convert_play(text: &str) -> String {
+fn convert_play(text: &str, lang: &str) -> String {
     let mut output = String::new();
 
     let parser = Parser::new(&text);
-    let parser = MdPlayScript::new(parser);
+
+    let options = if lang == "ja" {
+        Options::default_ja()
+    } else {
+        Options::default()
+    };
+
+    let parser = MdPlayScriptBuilder::new()
+        .options(options)
+        .build(parser);
     pulldown_cmark::html::push_html(&mut output, parser);
 
     output
@@ -66,7 +75,7 @@ fn main() {
     let opt = Opt::from_args();
 
     let text = read_file(&opt.input);
-    let output = convert_play(&text);
+    let output = convert_play(&text, &opt.language);
 
     println!("{}", html_prelude(&opt.title, &opt.language));
     println!("{}", output);

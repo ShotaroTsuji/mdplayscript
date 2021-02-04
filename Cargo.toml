@@ -1,6 +1,6 @@
 [package]
 name = "mdplayscript"
-version = "0.3.0"
+version = "0.4.0"
 authors = ["Shotaro Tsuji <Shotaro.Tsuji@gmail.com>"]
 edition = "2018"
 license = "MIT"
@@ -15,7 +15,6 @@ keywords = ["markdown", "pulldown-cmark", "play"]
 [dependencies]
 pulldown-cmark = "0.8.0"
 pulldown-cmark-to-cmark = "6.0.0"
-trim-in-place = "0.1.5"
 eyre = "0.6.5"
 structopt = "0.3.21"
 mdbook = "0.4.6"
@@ -24,3 +23,4 @@ rust-embed = { version = "5.9.0", features = ["interpolate-folder-path"] }
 
 [dev-dependencies]
 toml = "0.5.8"
+big_s = "1.0.2"
