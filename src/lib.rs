@@ -46,7 +46,7 @@
 //! ```
 //! use pulldown_cmark::Parser;
 //! use pulldown_cmark::html::push_html;
-//! use mdplayscript::interface::MdPlayScript;
+//! use mdplayscript::MdPlayScript;
 //!
 //! fn convert(s: &str) -> String {
 //!     let p = MdPlayScript::new(Parser::new(s));
@@ -101,6 +101,8 @@ pub mod parser;
 pub mod speech;
 pub mod renderer;
 pub mod interface;
+
+pub use interface::{MdPlayScript, Options, Params};
 
 pub fn find_one_of(s: &str, ps: &str) -> Option<(usize, char)> {
     s.char_indices()
