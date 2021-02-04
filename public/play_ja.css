@@ -11,6 +11,8 @@ div.play {
 }
 
 p {
+	hanging-punctuation: allow-end;
+	font-kerning: none;
 	font-style: normal;
 	text-align: center;
 	margin: 0.5em;
