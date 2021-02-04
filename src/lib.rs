@@ -7,7 +7,7 @@
 //! Thus it is recommended to pass the parser to `pulldown_cmark::html::push_html` or `write_html`.
 //!
 //! An implementation of mdbook preprocessor of this crate is
-//! [mdbook-playscript](https://github.com/ShotaroTsuji/mdbook-preprocessor).
+//! [mdbook-playscript](https://github.com/ShotaroTsuji/mdbook-playscript).
 //!
 //! # Example
 //!
