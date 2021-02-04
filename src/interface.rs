@@ -187,18 +187,17 @@ where
                 while let Some(speech) = speeches.next() {
                     let output = match parse_speech(speech) {
                         Ok(speech) => {
-                            let r = HtmlRenderer::default();
                             let mut html = Vec::new();
-                            r.render_speech(speech, &mut html);
+                            self.renderer.render_speech(speech, &mut html);
+                            html.push(Event::SoftBreak);
 
                             html
                         },
                         Err(para) => {
                             if self.mode.is_monologue() {
                                 let monologue = parse_body(para);
-                                let r = HtmlRenderer::default();
                                 let mut html = Vec::new();
-                                r.render_body(monologue, &mut html);
+                                self.renderer.render_body(monologue, &mut html);
                                 wrap_by_div_speech(html)
                             } else {
                                 wrap_by_paragraph_tag(para)
