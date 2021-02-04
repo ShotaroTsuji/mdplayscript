@@ -2,14 +2,14 @@
 
 An extension of Markdown for play scripts
 
-This crate is a parser of an extension of Markdown for play scripts.
+This crate is a parser of an extension of Markdown for stage play scripts.
 It defines an extended grammar of texts in paragraphs.
-It is implemented as a filter for `Parser` of pulldown-cmark crate.
+It is implemented as a filter for `struct Parser` of pulldown-cmark crate.
 The goal of this parser is emit an HTML document.
 Thus it is recommended to pass the parser to `pulldown_cmark::html::push_html` or `write_html`.
 
-An implementation of mdbook preprocessor of this crate is
-[mdbook-playscript](https://github.com/ShotaroTsuji/mdbook-preprocessor).
+This crate has an implementation of mdbook preprocessor:
+[mdbook-playscript](https://github.com/ShotaroTsuji/mdbook-playscript).
 
 ## Example
 
@@ -23,7 +23,7 @@ is the speech of the character.
 A> Hello!
 ```
 
-A text between a pair of parentheses in a speech denotes a direction.
+A text between a pair of parentheses in a speech is the content of a direction.
 
 ```rust
 A> Hello! (some direction)
@@ -36,7 +36,19 @@ No space is allowed between the right parenthesis and the right angle.
 A (running)> Hello!
 ```
 
-Monologues are surrounded by the following directives: `<!-- playscript-monologue-begin -->`
+### Directives
+
+Directives are written as HTML comments.
+There are four directives:
+- playscript-on
+- playscript-off
+- playscript-monologue-begin
+- playscript-monologue-end
+
+`<!-- playscript-on -->` and `<!-- playscript-off -->` switch the parser on and off
+respectively.
+
+Monologues are surrounded by the directives: `<!-- playscript-monologue-begin -->`
 and `<!-- playscript-monologue-end -->`.
 The texts surrounded by the monologue directives are styled in the normal font style and the
 directions between the directives are styled in italic.
@@ -72,8 +84,7 @@ Monologue
 <!-- playscript-monologue-end -->
 "#),
 r#"<!-- playscript-monologue-begin -->
-<div class="speech"><p><span>Monologue</span><span class="direction">direction</span></p></div>
-<!-- playscript-monologue-end -->
+<div class="speech"><p><span>Monologue</span><span class="direction">direction</span></p></div><!-- playscript-monologue-end -->
 "#);
 ```
 
@@ -98,7 +109,6 @@ The output file is
 
 ## License
 
-MIT License
-
-
-License: MIT
+This crate is licensed under MIT License except the following files:
+- `examples/figaro.md`: CC-BY-SA 3.0,
+- `examples/yushima.md`: Copyleft.
