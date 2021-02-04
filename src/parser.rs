@@ -68,6 +68,10 @@ where
             last: None,
         }
     }
+
+    pub fn into_inner(self) -> FuseOnParagraphEnd<'a, I> {
+        self.iter
+    }
 }
 
 impl<'a, I> Iterator for Speeches<'a, I>

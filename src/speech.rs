@@ -34,12 +34,8 @@ impl<'a> Direction<'a> {
     }
 }
 
-pub fn parse_speech<'a>(events: Vec<Event<'a>>) -> Option<Speech<'a>> {
-    let mut iter = events.into_iter();
-
-    let first = iter.next();
-
-    let (heading, first) = match first {
+pub fn parse_speech<'a>(events: Vec<Event<'a>>) -> Result<Speech<'a>, Vec<Event<'a>>> {
+    let (heading, first) = match events.first() {
         Some(Event::Text(s)) => {
             let s = s.to_string();
             if let Some((heading, line)) = split_speech_heading(s.as_ref()) {
@@ -47,18 +43,21 @@ pub fn parse_speech<'a>(events: Vec<Event<'a>>) -> Option<Speech<'a>> {
                 let line = line.to_owned();
                 (parse_heading(&heading), Event::Text(line.into()))
             } else {
-                return None;
+                return Err(events);
             }
         },
-        _ => return None,
+        _ => return Err(events),
     };
 
-    let mut events = vec![first];
-    iter.for_each(|e| { events.push(e); });
+    let mut speech = vec![first];
+    for e in events.into_iter().skip(1) {
+        speech.push(e);
+    }
+    remove_trailing_softbreak(&mut speech);
 
-    let body = parse_body(events);
+    let body = parse_body(speech);
 
-    Some(Speech {
+    Ok(Speech {
         heading: heading,
         body: body,
     })
@@ -243,6 +242,16 @@ pub fn trim_start_of_line_head<'a>(body: Vec<Inline<'a>>) -> Vec<Inline<'a>> {
     ret
 }
 
+fn remove_trailing_softbreak<'a>(events: &mut Vec<Event<'a>>) {
+    match events.pop() {
+        Some(Event::SoftBreak) => {},
+        Some(e) => {
+            events.push(e);
+        },
+        None => {},
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -343,7 +352,7 @@ mod test {
                 ])),
             ],
         };
-        assert_eq!(parse_speech(input), Some(output));
+        assert_eq!(parse_speech(input), Ok(output));
     }
 
     #[test]
