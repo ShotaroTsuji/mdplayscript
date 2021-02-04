@@ -27,11 +27,70 @@ impl Mode {
     }
 }
 
+#[derive(Debug)]
+pub struct Options {
+    replace_softbreaks_with: Option<String>,
+    disabled_in_default: bool,
+}
+
 #[derive(Debug,Default)]
-struct Params {
-    title: Option<String>,
-    subtitle: Option<String>,
-    authors: Vec<String>,
+pub struct Params {
+    pub title: Option<String>,
+    pub subtitle: Option<String>,
+    pub authors: Vec<String>,
+}
+
+#[derive(Debug)]
+pub struct MdPlayScriptBuilder {
+    options: Option<Options>,
+    params: Option<Params>,
+}
+
+impl MdPlayScriptBuilder {
+    pub fn new() -> Self {
+        Self {
+            options: None,
+            params: None,
+        }
+    }
+
+    pub fn options(self, opt: Options) -> Self {
+        Self {
+            options: Some(opt),
+            ..self
+        }
+    }
+
+    pub fn params(self, p: Params) -> Self {
+        Self {
+            params: Some(p),
+            ..self
+        }
+    }
+
+    pub fn build<'a, I>(self, iter: I) -> MdPlayScript<'a, I>
+        where
+            I: Iterator<Item=Event<'a>>,
+    {
+        let options = self.options.unwrap();
+        let renderer = HtmlRenderer {
+            replace_softbreak: options.replace_softbreaks_with,
+            ..Default::default()
+        };
+        let mode = if options.disabled_in_default {
+            Mode::Nop
+        } else {
+            Mode::PlayScript
+        };
+
+        MdPlayScript {
+            iter: Some(iter),
+            queue: VecDeque::new(),
+            mode: mode,
+            params: self.params.unwrap(),
+            renderer: renderer,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -40,6 +99,7 @@ pub struct MdPlayScript<'a, I> {
     queue: VecDeque<Event<'a>>,
     mode: Mode,
     params: Params,
+    renderer: HtmlRenderer,
 }
 
 impl<'a, I> MdPlayScript<'a, I>
@@ -52,6 +112,7 @@ where
             queue: VecDeque::new(),
             mode: Mode::PlayScript,
             params: Default::default(),
+            renderer: Default::default(),
         }
     }
 

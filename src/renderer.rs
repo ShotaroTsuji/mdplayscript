@@ -6,7 +6,7 @@ pub struct HtmlRenderer {
     pub speech_class: &'static str,
     pub character_class: &'static str,
     pub direction_class: &'static str,
-    pub replace_softbreak: Option<&'static str>,
+    pub replace_softbreak: Option<String>,
 }
 
 impl Default for HtmlRenderer {
@@ -15,7 +15,7 @@ impl Default for HtmlRenderer {
             speech_class: "speech",
             character_class: "character",
             direction_class: "direction",
-            replace_softbreak: Some(" "),
+            replace_softbreak: Some(" ".to_owned()),
         }
     }
 }
@@ -87,7 +87,7 @@ impl HtmlRenderer {
         let mut event_count = 0usize;
 
         let mut body = body;
-        if let Some(s) = self.replace_softbreak {
+        if let Some(s) = self.replace_softbreak.as_ref() {
             replace_softbreaks(&mut body, s.to_owned());
         }
 
