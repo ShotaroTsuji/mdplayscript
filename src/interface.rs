@@ -33,6 +33,24 @@ pub struct Options {
     disabled_in_default: bool,
 }
 
+impl Default for Options {
+    fn default() -> Self {
+        Self {
+            replace_softbreaks_with: Some(" ".to_owned()),
+            disabled_in_default: false,
+        }
+    }
+}
+
+impl Options {
+    pub fn default_ja() -> Self {
+        Self {
+            replace_softbreaks_with: Some("".to_owned()),
+            disabled_in_default: false,
+        }
+    }
+}
+
 #[derive(Debug,Default)]
 pub struct Params {
     pub title: Option<String>,
@@ -87,7 +105,7 @@ impl MdPlayScriptBuilder {
             iter: Some(iter),
             queue: VecDeque::new(),
             mode: mode,
-            params: self.params.unwrap(),
+            params: self.params.unwrap_or(Params::default()),
             renderer: renderer,
         }
     }
