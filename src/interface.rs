@@ -75,7 +75,6 @@ where
 
         match iter.next() {
             Some(Event::Html(s)) => {
-                eprintln!("HTML: {:?} -> {:?}", s, parse_directive(&s));
                 match parse_directive(&s) {
                     Some(Directive::MonologueBegin) => {
                         self.mode = Mode::Monologue;
@@ -92,6 +91,12 @@ where
                     Some(Directive::Title) => {
                         emit_title(&self.params, &mut self.queue);
                     },
+                    Some(Directive::SubTitle) => {
+                        emit_subtitle(&self.params, &mut self.queue);
+                    },
+                    Some(Directive::Authors) => {
+                        emit_authors(&self.params, &mut self.queue);
+                    },
                     _ => {},
                 }
 
@@ -99,7 +104,6 @@ where
             },
             Some(Event::Start(Tag::Paragraph)) if !self.mode.is_off() => {
                 let mut speeches = Speeches::new(FuseOnParagraphEnd::new(iter));
-                eprintln!("START PARAGRAPH (MODE: {:?})", self.mode);
 
                 while let Some(speech) = speeches.next() {
                     let output = match parse_speech(speech) {
@@ -197,14 +201,46 @@ fn parse_directive(s: &str) -> Option<Directive> {
 }
 
 fn emit_title<'a>(params: &Params, queue: &mut VecDeque<Event<'a>>) {
-    let p_start = "<p class=\"cover-title\">";
-    let p_end = "</p>";
+    let p_start = "<h1 class=\"cover-title\">";
+    let p_end = "</h1>";
 
     if let Some(content) = params.title.as_ref().cloned() {
         queue.push_back(Event::Html(p_start.into()));
         queue.push_back(Event::Text(content.into()));
         queue.push_back(Event::Html(p_end.into()));
     }
+}
+
+fn emit_subtitle<'a>(params: &Params, queue: &mut VecDeque<Event<'a>>) {
+    let p_start = "<h2 class=\"cover-title\">";
+    let p_end = "</h2>";
+
+    if let Some(content) = params.subtitle.as_ref().cloned() {
+        queue.push_back(Event::Html(p_start.into()));
+        queue.push_back(Event::Text(content.into()));
+        queue.push_back(Event::Html(p_end.into()));
+    }
+}
+
+fn emit_authors<'a>(params: &Params, queue: &mut VecDeque<Event<'a>>) {
+    let div_start = "<div class=\"authors\">";
+    let div_end = "</div>";
+    let p_start = "<p class=\"cover-author\">";
+    let p_end = "</p>";
+
+    if params.authors.is_empty() {
+        return;
+    }
+
+    queue.push_back(Event::Html(div_start.into()));
+
+    for author in params.authors.iter().cloned() {
+        queue.push_back(Event::Html(p_start.into()));
+        queue.push_back(Event::Text(author.into()));
+        queue.push_back(Event::Html(p_end.into()));
+    }
+
+    queue.push_back(Event::Html(div_end.into()));
 }
 
 #[cfg(test)]
