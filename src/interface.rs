@@ -141,27 +141,30 @@ where
     }
 }
 
-fn wrap_by_paragraph_tag<'a>(mut events: Vec<Event<'a>>) -> Vec<Event<'a>> {
+fn wrap_events_by<'a, 'b: 'a>(mut events: Vec<Event<'a>>, start: Event<'b>, end: Event<'b>) -> Vec<Event<'a>> {
     let mut output = Vec::with_capacity(events.len() + 2);
 
-    output.push(Event::Start(Tag::Paragraph));
+    output.push(start);
     output.append(&mut events);
-    output.push(Event::End(Tag::Paragraph));
+    output.push(end);
 
     output
 }
 
-fn wrap_by_div_speech<'a>(mut events: Vec<Event<'a>>) -> Vec<Event<'a>> {
-    let mut output = Vec::with_capacity(events.len() + 2);
+fn wrap_by_paragraph_tag<'a>(events: Vec<Event<'a>>) -> Vec<Event<'a>> {
+    wrap_events_by(
+        events,
+        Event::Start(Tag::Paragraph),
+        Event::End(Tag::Paragraph),
+    )
+}
 
-    let start = "<div class=\"speech\">";
-    let end = "</div>";
-
-    output.push(Event::Html(start.into()));
-    output.append(&mut events);
-    output.push(Event::Html(end.into()));
-
-    output
+fn wrap_by_div_speech<'a>(events: Vec<Event<'a>>) -> Vec<Event<'a>> {
+    wrap_events_by(
+        events,
+        Event::Html("<div class=\"speech\">".into()),
+        Event::Html("</div>".into()),
+    )
 }
 
 #[derive(Debug,Clone,PartialEq)]
