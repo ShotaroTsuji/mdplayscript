@@ -86,8 +86,10 @@ impl MdPlayScriptBuilder {
         }
     }
 
-    fn unwrap_args(self) -> (Params, HtmlRenderer, Mode) {
-        let params = self.params.unwrap_or(Params::default());
+    pub fn build<'a, I>(self, iter: I) -> MdPlayScript<'a, I>
+        where
+            I: Iterator<Item=Event<'a>>,
+    {
         let options = self.options.unwrap();
         let renderer = HtmlRenderer {
             replace_softbreak: options.replace_softbreaks_with,
@@ -99,20 +101,11 @@ impl MdPlayScriptBuilder {
             Mode::PlayScript
         };
 
-        (params, renderer, mode)
-    }
-
-    pub fn build<'a, I>(self, iter: I) -> MdPlayScript<'a, I>
-        where
-            I: Iterator<Item=Event<'a>>,
-    {
-        let (params, renderer, mode) = self.unwrap_args();
-
         MdPlayScript {
             iter: Some(iter),
             queue: VecDeque::new(),
             mode: mode,
-            params: params,
+            params: self.params.unwrap_or(Params::default()),
             renderer: renderer,
         }
     }
