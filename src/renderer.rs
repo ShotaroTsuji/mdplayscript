@@ -43,11 +43,11 @@ impl HtmlRenderer {
         events.push(Event::Html(span_start.into()));
         events.push(Event::Text(heading.character));
         events.push(Event::Html(span_end.into()));
-        self.render_direction(heading.direction, events);
+        self.render_direction(heading.direction, false, events);
         events.push(Event::Html(h_end.into()));
     }
 
-    pub fn render_direction<'a>(&self, direction: Direction<'a>, events: &mut Vec<Event<'a>>) {
+    pub fn render_direction<'a>(&self, direction: Direction<'a>, trim_start: bool, events: &mut Vec<Event<'a>>) {
         let direction = direction.0;
         let len = direction.len();
 
@@ -64,7 +64,7 @@ impl HtmlRenderer {
             match inline {
                 Event::Text(s) => {
                     let mut s: &str = s.as_ref();
-                    if index == 0 {
+                    if index == 0 && trim_start {
                         s = s.trim_start();
                     }
                     if index + 1 == len {
@@ -118,7 +118,7 @@ impl HtmlRenderer {
                         events.push(Event::Html("</span>".into()));
                     }
 
-                    self.render_direction(direction, events);
+                    self.render_direction(direction, true, events);
                     to_be_trimmed_start = true;
                     event_count = 0;
                 },
@@ -196,7 +196,7 @@ mod test {
             Event::Html("</span>".into()),
         ];
         let mut result = Vec::new();
-        HtmlRenderer::default().render_direction(Direction(input), &mut result);
+        HtmlRenderer::default().render_direction(Direction(input), true, &mut result);
         assert_eq!(result, expected);
     }
 
@@ -219,7 +219,7 @@ mod test {
             Event::Html("</span>".into()),
         ];
         let mut result = Vec::new();
-        HtmlRenderer::default().render_direction(Direction(input), &mut result);
+        HtmlRenderer::default().render_direction(Direction(input), true, &mut result);
         assert_eq!(result, expected);
     }
 
