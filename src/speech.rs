@@ -85,7 +85,7 @@ pub fn parse_heading(s: &str) -> Heading<'static> {
         }
     }
 
-    let s = s[..close_paren].trim().to_owned();
+    let s = s[..close_paren].to_owned();
     let mut direction = Direction::new();
     direction.push_string(s);
 
