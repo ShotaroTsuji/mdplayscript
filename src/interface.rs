@@ -176,7 +176,9 @@ where
                     Some(Directive::Authors) => {
                         emit_authors(&self.params, &mut self.queue);
                     },
-                    _ => {},
+                    Some(Directive::MakeTitle) => {
+                    },
+                    None => {},
                 }
 
                 self.queue.push_back(Event::Html(s));
@@ -260,6 +262,7 @@ enum Directive {
     Title,
     SubTitle,
     Authors,
+    MakeTitle,
 }
 
 fn parse_directive(s: &str) -> Option<Directive> {
@@ -276,6 +279,7 @@ fn parse_directive(s: &str) -> Option<Directive> {
         "playscript-title" => Some(Directive::Title),
         "playscript-subtitle" => Some(Directive::SubTitle),
         "playscript-authors" => Some(Directive::Authors),
+        "playscript-make-title" => Some(Directive::MakeTitle),
         _ => None,
     }
 }
