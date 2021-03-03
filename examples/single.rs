@@ -3,7 +3,7 @@ use std::fs::File;
 use std::io::Read;
 use structopt::StructOpt;
 use pulldown_cmark::Parser;
-use mdplayscript::interface::{MdPlayScriptBuilder, Options};
+use mdplayscript::interface::{MdPlayScriptBuilder, Options, Params};
 
 fn html_prelude(title: &str, lang: &str) -> String {
     let cssfile = if lang == "ja" {
@@ -32,11 +32,33 @@ r#"</div>
 </html>
 "#;
 
+fn make_title(params: &Params) -> String {
+    let mut s = format!(r#"<div class="cover"><h1 class="title">{title}</h1>"#,
+        title=params.title.as_ref().map(|s| s.as_str()).unwrap_or(""));
+
+    if let Some(subtitle) = params.subtitle.as_ref() {
+        s += &format!("<p class=\"subtitle\">{}</p>", subtitle);
+    }
+
+    s += "<div class=\"authors\">";
+
+    for author in params.authors.iter() {
+        s += &format!("<p>{}</p>", author);
+    }
+
+    s += "</div></div>";
+
+    s
+}
 
 #[derive(Debug,StructOpt)]
 struct Opt {
     #[structopt(long,short,default_value="Example of mdPlay")]
     title: String,
+    #[structopt(long)]
+    subtitle: Option<String>,
+    #[structopt(long)]
+    authors: Vec<String>,
     #[structopt(long,short,default_value="")]
     language: String,
     #[structopt(parse(from_os_str))]
@@ -52,7 +74,7 @@ fn read_file<P: AsRef<Path>>(path: P) -> String {
     text
 }
 
-fn convert_play(text: &str, lang: &str) -> String {
+fn convert_play(text: &str, lang: &str, params: Params) -> String {
     let mut output = String::new();
 
     let parser = Parser::new(&text);
@@ -65,6 +87,8 @@ fn convert_play(text: &str, lang: &str) -> String {
 
     let parser = MdPlayScriptBuilder::new()
         .options(options)
+        .params(params)
+        .make_title(Box::new(make_title))
         .build(parser);
     pulldown_cmark::html::push_html(&mut output, parser);
 
@@ -72,10 +96,23 @@ fn convert_play(text: &str, lang: &str) -> String {
 }
 
 fn main() {
+    env_logger::init();
+
     let opt = Opt::from_args();
 
+    log::info!("Parsed command line options");
+    log::info!("  Title: {}", opt.title);
+    log::info!("  Subtitle: {:?}", opt.subtitle);
+    log::info!("  Authors: {:?}", opt.authors);
+
+    let params = Params {
+        title: Some(opt.title.clone()),
+        subtitle: opt.subtitle.clone(),
+        authors: opt.authors.clone(),
+    };
+
     let text = read_file(&opt.input);
-    let output = convert_play(&text, &opt.language);
+    let output = convert_play(&text, &opt.language, params);
 
     println!("{}", html_prelude(&opt.title, &opt.language));
     println!("{}", output);

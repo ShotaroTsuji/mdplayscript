@@ -1,6 +1,6 @@
 [package]
 name = "mdplayscript"
-version = "0.4.0"
+version = "0.5.0"
 authors = ["Shotaro Tsuji <Shotaro.Tsuji@gmail.com>"]
 edition = "2018"
 license = "MIT"
@@ -24,3 +24,5 @@ rust-embed = { version = "5.9.0", features = ["interpolate-folder-path"] }
 [dev-dependencies]
 toml = "0.5.8"
 big_s = "1.0.2"
+log = "0.4.14"
+env_logger = "0.8.3"
