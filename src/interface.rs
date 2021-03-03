@@ -58,10 +58,10 @@ pub struct Params {
     pub authors: Vec<String>,
 }
 
-#[derive(Debug,Clone)]
 pub struct MdPlayScriptBuilder {
     options: Option<Options>,
     params: Option<Params>,
+    make_title: Option<Box<dyn FnMut(&Params) -> String>>,
 }
 
 impl MdPlayScriptBuilder {
@@ -69,6 +69,7 @@ impl MdPlayScriptBuilder {
         Self {
             options: None,
             params: None,
+            make_title: None,
         }
     }
 
@@ -82,6 +83,13 @@ impl MdPlayScriptBuilder {
     pub fn params(self, p: Params) -> Self {
         Self {
             params: Some(p),
+            ..self
+        }
+    }
+
+    pub fn make_title(self, val: Box<dyn FnMut(&Params) -> String>) -> Self {
+        Self {
+            make_title: Some(val),
             ..self
         }
     }
@@ -107,17 +115,18 @@ impl MdPlayScriptBuilder {
             mode: mode,
             params: self.params.unwrap_or(Params::default()),
             renderer: renderer,
+            make_title: self.make_title,
         }
     }
 }
 
-#[derive(Debug)]
 pub struct MdPlayScript<'a, I> {
     iter: Option<I>,
     queue: VecDeque<Event<'a>>,
     mode: Mode,
     params: Params,
     renderer: HtmlRenderer,
+    make_title: Option<Box<dyn FnMut(&Params) -> String>>,
 }
 
 impl<'a, I> MdPlayScript<'a, I>
@@ -131,6 +140,7 @@ where
             mode: Mode::PlayScript,
             params: Default::default(),
             renderer: Default::default(),
+            make_title: None,
         }
     }
 
@@ -176,7 +186,13 @@ where
                     Some(Directive::Authors) => {
                         emit_authors(&self.params, &mut self.queue);
                     },
-                    _ => {},
+                    Some(Directive::MakeTitle) => {
+                        if let Some(make_title) = self.make_title.as_mut() {
+                            let cover = (make_title)(&self.params);
+                            self.queue.push_back(Event::Html(cover.into()));
+                        }
+                    },
+                    None => {},
                 }
 
                 self.queue.push_back(Event::Html(s));
@@ -260,6 +276,7 @@ enum Directive {
     Title,
     SubTitle,
     Authors,
+    MakeTitle,
 }
 
 fn parse_directive(s: &str) -> Option<Directive> {
@@ -276,6 +293,7 @@ fn parse_directive(s: &str) -> Option<Directive> {
         "playscript-title" => Some(Directive::Title),
         "playscript-subtitle" => Some(Directive::SubTitle),
         "playscript-authors" => Some(Directive::Authors),
+        "playscript-make-title" => Some(Directive::MakeTitle),
         _ => None,
     }
 }

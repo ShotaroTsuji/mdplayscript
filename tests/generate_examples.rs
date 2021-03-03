@@ -6,6 +6,7 @@ struct SinglePageExample<'a> {
     input: &'a str,
     output: &'a str,
     title: &'a str,
+    authors: Vec<&'a str>,
     lang: &'a str,
 }
 
@@ -16,12 +17,19 @@ impl<'a> SinglePageExample<'a> {
         assert_ne!(self.output.len(), 0);
 
         let mut cmd = Command::new("cargo");
+        cmd.env("RUST_LOG", "info");
         cmd.args(&["run", "--example", "single", "--"]);
+        if !self.authors.is_empty() {
+            cmd.arg("--authors");
+            for author in self.authors.iter() {
+                cmd.arg(author);
+            }
+        }
+        if !self.lang.is_empty() {
+            cmd.arg("-l").arg(self.lang);
+        }
         if self.title.len() > 0 {
             cmd.arg("-t").arg(self.title);
-        }
-        if self.lang.len() > 0 {
-            cmd.arg("-l").arg(self.lang);
         }
         let status = cmd.arg(self.input)
             .stdout(File::create(self.output).unwrap())
@@ -46,13 +54,15 @@ fn generate_examples() {
         input: "examples/figaro.md",
         output: "public/figaro.html",
         title: "Le Mariage de Figaro",
+        authors: vec!["Beaumarchais"],
         lang: "",
     }.run();
 
     SinglePageExample {
         input: "examples/yushima.md",
         output: "public/yushima.html",
-        title: "湯島の境内 - 泉鏡花",
+        title: "湯島の境内",
+        authors: vec!["泉鏡花"],
         lang: "ja",
     }.run();
 }
