@@ -4,8 +4,6 @@ use crate::parser::{FuseOnParagraphEnd, Speeches};
 use crate::speech::{parse_speech, parse_body};
 use crate::renderer::HtmlRenderer;
 
-pub trait MakeTitle: FnMut(&Params) -> String {}
-
 #[derive(Debug)]
 enum Mode {
     Nop,
@@ -63,7 +61,7 @@ pub struct Params {
 pub struct MdPlayScriptBuilder {
     options: Option<Options>,
     params: Option<Params>,
-    make_title: Option<Box<dyn MakeTitle>>,
+    make_title: Option<Box<dyn FnMut(&Params) -> String>>,
 }
 
 impl MdPlayScriptBuilder {
@@ -89,7 +87,7 @@ impl MdPlayScriptBuilder {
         }
     }
 
-    pub fn make_title(self, val: Box<dyn MakeTitle>) -> Self {
+    pub fn make_title(self, val: Box<dyn FnMut(&Params) -> String>) -> Self {
         Self {
             make_title: Some(val),
             ..self
@@ -128,7 +126,7 @@ pub struct MdPlayScript<'a, I> {
     mode: Mode,
     params: Params,
     renderer: HtmlRenderer,
-    make_title: Option<Box<dyn MakeTitle>>,
+    make_title: Option<Box<dyn FnMut(&Params) -> String>>,
 }
 
 impl<'a, I> MdPlayScript<'a, I>

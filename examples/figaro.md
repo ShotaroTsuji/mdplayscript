@@ -1,4 +1,4 @@
-# Le Mariage de Figaro
+<!-- playscript-make-title -->
 
 This text is excerpted from [Beaumarchais' *Le Mariage de Figaro*](https://fr.wikisource.org/wiki/Le_Mariage_de_Figaro/Acte_I)
 
