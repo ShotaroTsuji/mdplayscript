@@ -13,7 +13,7 @@ This crate has an implementation of mdbook preprocessor:
 
 ## Example
 
-### Play script format
+### Play Script Format
 
 A line starts with a string and a right angle denotes a character's speech.
 The text before the right angle is the character name and the text after the right angle
@@ -88,7 +88,7 @@ r#"<!-- playscript-monologue-begin -->
 "#);
 ```
 
-### CLI program
+### CLI Program
 
 This crate has no proper CLI program. It only has a tiny example program: `examples/single.rs`.
 It converts a single Markdown into an HTML document.
@@ -102,6 +102,10 @@ If you pass `-l ja` option to `examples/single.rs`, it uses the style sheet
 `examples/play_ja.css`.
 The output file is
 [`public/yushima.html`](https://shotarotsuji.github.io/mdplayscript/yushima.html).
+
+### Test Code
+
+`tests/generate_examples.rs` converts example markdown files located in `examples` directory into HTML files created in the same directory.
 
 ## ToDo
 
