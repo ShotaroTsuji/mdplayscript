@@ -5,7 +5,7 @@ An extension of Markdown for play scripts
 This crate is a parser of an extension of Markdown for stage play scripts.
 It defines an extended grammar of texts in paragraphs.
 It is implemented as a filter for `struct Parser` of pulldown-cmark crate.
-The goal of this parser is emit an HTML document.
+The goal of this parser is to emit an HTML document.
 Thus it is recommended to pass the parser to `pulldown_cmark::html::push_html` or `write_html`.
 
 This crate has an implementation of mdbook preprocessor:
