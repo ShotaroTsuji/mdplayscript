@@ -210,28 +210,25 @@ where
                 let mut speeches = Speeches::new(FuseOnParagraphEnd::new(iter));
 
                 while let Some(speech) = speeches.next() {
-                    let output = match parse_speech(speech) {
+                    match parse_speech(speech) {
                         Ok(speech) => {
                             let mut html = Vec::new();
                             self.renderer.render_speech(speech, &mut html);
                             html.push(Event::SoftBreak);
-
-                            html
+                            self.append_events(html);
+                        },
+                        Err(para) if self.mode.is_monologue() => {
+                            let monologue = parse_body(para);
+                            let mut html = Vec::new();
+                            self.renderer.render_body(monologue, &mut html);
+                            self.append_events(wrap_by_div_speech(html));
                         },
                         Err(para) => {
-                            if self.mode.is_monologue() {
-                                let monologue = parse_body(para);
-                                let mut html = Vec::new();
-                                self.renderer.render_body(monologue, &mut html);
-                                wrap_by_div_speech(html)
-                            } else {
-                                let mut output = Vec::new();
-                                self.renderer.render_events(para, &mut output);
-                                wrap_by_paragraph_tag(output)
-                            }
+                            let mut output = Vec::new();
+                            self.renderer.render_events(para, &mut output);
+                            self.append_events(wrap_by_paragraph_tag(output));
                         },
                     };
-                    self.append_events(output);
                 }
 
                 iter = speeches.into_inner().into_inner();
