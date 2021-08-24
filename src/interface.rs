@@ -182,9 +182,29 @@ where
     }
 
     fn append_events(&mut self, events: Vec<Event<'a>>) {
-        for ev in events.into_iter() {
-            self.queue.push_back(ev);
-        }
+        self.queue.extend(events);
+    }
+
+    fn dispatch_speech(&mut self, speech: Vec<Event<'a>>) {
+        match parse_speech(speech) {
+            Ok(speech) => {
+                let mut html = Vec::new();
+                self.renderer.render_speech(speech, &mut html);
+                html.push(Event::SoftBreak);
+                self.append_events(html);
+            },
+            Err(para) if self.mode.is_monologue() => {
+                let monologue = parse_body(para);
+                let mut html = Vec::new();
+                self.renderer.render_body(monologue, &mut html);
+                self.append_events(wrap_by_div_speech(html));
+            },
+            Err(para) => {
+                let mut output = Vec::new();
+                self.renderer.render_events(para, &mut output);
+                self.append_events(wrap_by_paragraph_tag(output));
+            },
+        };
     }
 }
 
@@ -210,25 +230,7 @@ where
                 let mut speeches = Speeches::new(FuseOnParagraphEnd::new(iter));
 
                 while let Some(speech) = speeches.next() {
-                    match parse_speech(speech) {
-                        Ok(speech) => {
-                            let mut html = Vec::new();
-                            self.renderer.render_speech(speech, &mut html);
-                            html.push(Event::SoftBreak);
-                            self.append_events(html);
-                        },
-                        Err(para) if self.mode.is_monologue() => {
-                            let monologue = parse_body(para);
-                            let mut html = Vec::new();
-                            self.renderer.render_body(monologue, &mut html);
-                            self.append_events(wrap_by_div_speech(html));
-                        },
-                        Err(para) => {
-                            let mut output = Vec::new();
-                            self.renderer.render_events(para, &mut output);
-                            self.append_events(wrap_by_paragraph_tag(output));
-                        },
-                    };
+                    self.dispatch_speech(speech);
                 }
 
                 iter = speeches.into_inner().into_inner();
