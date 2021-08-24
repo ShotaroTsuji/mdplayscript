@@ -180,6 +180,12 @@ where
             None => {},
         }
     }
+
+    fn append_events(&mut self, events: Vec<Event<'a>>) {
+        for ev in events.into_iter() {
+            self.queue.push_back(ev);
+        }
+    }
 }
 
 impl<'a, I: 'a> Iterator for MdPlayScript<'a, I>
@@ -225,9 +231,7 @@ where
                             }
                         },
                     };
-                    for ev in output.into_iter() {
-                        self.queue.push_back(ev);
-                    }
+                    self.append_events(output);
                 }
 
                 iter = speeches.into_inner().into_inner();
