@@ -19,20 +19,20 @@ A line starts with a string and a right angle denotes a character's speech.
 The text before the right angle is the character name and the text after the right angle
 is the speech of the character.
 
-```rust
+```ignore
 A> Hello!
 ```
 
 A text between a pair of parentheses in a speech is the content of a direction.
 
-```rust
+```ignore
 A> Hello! (some direction)
 ```
 
 A direction can be placed after the character name.
 No space is allowed between the right parenthesis and the right angle.
 
-```rust
+```ignore
 A (running)> Hello!
 ```
 
