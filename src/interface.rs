@@ -1,5 +1,5 @@
 use std::collections::VecDeque;
-use pulldown_cmark::{Event, Tag, CowStr};
+use pulldown_cmark::{Event, Tag};
 use crate::parser::{FuseOnParagraphEnd, Speeches};
 use crate::speech::{parse_speech, parse_body};
 use crate::renderer::HtmlRenderer;
@@ -148,7 +148,7 @@ where
         self.iter.unwrap()
     }
 
-    fn dispatch_directive(&mut self, s: CowStr<'a>) {
+    fn dispatch_directive(&mut self, s: &str) {
         match parse_directive(&s) {
             Some(Directive::MonologueBegin) => {
                 self.mode = Mode::Monologue;
@@ -179,8 +179,6 @@ where
             },
             None => {},
         }
-
-        self.queue.push_back(Event::Html(s));
     }
 }
 
@@ -199,7 +197,8 @@ where
 
         match iter.next() {
             Some(Event::Html(s)) => {
-                self.dispatch_directive(s);
+                self.dispatch_directive(&s);
+                self.queue.push_back(Event::Html(s));
             },
             Some(Event::Start(Tag::Paragraph)) if !self.mode.is_off() => {
                 let mut speeches = Speeches::new(FuseOnParagraphEnd::new(iter));
