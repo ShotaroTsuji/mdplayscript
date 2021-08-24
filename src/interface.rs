@@ -1,5 +1,5 @@
 use std::collections::VecDeque;
-use pulldown_cmark::{Event, Tag};
+use pulldown_cmark::{Event, Tag, CowStr};
 use crate::parser::{FuseOnParagraphEnd, Speeches};
 use crate::speech::{parse_speech, parse_body};
 use crate::renderer::HtmlRenderer;
@@ -147,6 +147,41 @@ where
     pub fn into_inner(self) -> I {
         self.iter.unwrap()
     }
+
+    fn dispatch_directive(&mut self, s: CowStr<'a>) {
+        match parse_directive(&s) {
+            Some(Directive::MonologueBegin) => {
+                self.mode = Mode::Monologue;
+            },
+            Some(Directive::MonologueEnd) => {
+                self.mode = Mode::PlayScript;
+            },
+            Some(Directive::PlayScriptOn) => {
+                self.mode = Mode::PlayScript;
+            },
+            Some(Directive::PlayScriptOff) => {
+                self.mode = Mode::Nop;
+            },
+            Some(Directive::Title) => {
+                emit_title(&self.params, &mut self.queue);
+            },
+            Some(Directive::SubTitle) => {
+                emit_subtitle(&self.params, &mut self.queue);
+            },
+            Some(Directive::Authors) => {
+                emit_authors(&self.params, &mut self.queue);
+            },
+            Some(Directive::MakeTitle) => {
+                if let Some(make_title) = self.make_title.as_mut() {
+                    let cover = (make_title)(&self.params);
+                    self.queue.push_back(Event::Html(cover.into()));
+                }
+            },
+            None => {},
+        }
+
+        self.queue.push_back(Event::Html(s));
+    }
 }
 
 impl<'a, I: 'a> Iterator for MdPlayScript<'a, I>
@@ -164,38 +199,7 @@ where
 
         match iter.next() {
             Some(Event::Html(s)) => {
-                match parse_directive(&s) {
-                    Some(Directive::MonologueBegin) => {
-                        self.mode = Mode::Monologue;
-                    },
-                    Some(Directive::MonologueEnd) => {
-                        self.mode = Mode::PlayScript;
-                    },
-                    Some(Directive::PlayScriptOn) => {
-                        self.mode = Mode::PlayScript;
-                    },
-                    Some(Directive::PlayScriptOff) => {
-                        self.mode = Mode::Nop;
-                    },
-                    Some(Directive::Title) => {
-                        emit_title(&self.params, &mut self.queue);
-                    },
-                    Some(Directive::SubTitle) => {
-                        emit_subtitle(&self.params, &mut self.queue);
-                    },
-                    Some(Directive::Authors) => {
-                        emit_authors(&self.params, &mut self.queue);
-                    },
-                    Some(Directive::MakeTitle) => {
-                        if let Some(make_title) = self.make_title.as_mut() {
-                            let cover = (make_title)(&self.params);
-                            self.queue.push_back(Event::Html(cover.into()));
-                        }
-                    },
-                    None => {},
-                }
-
-                self.queue.push_back(Event::Html(s));
+                self.dispatch_directive(s);
             },
             Some(Event::Start(Tag::Paragraph)) if !self.mode.is_off() => {
                 let mut speeches = Speeches::new(FuseOnParagraphEnd::new(iter));
