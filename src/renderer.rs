@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use pulldown_cmark::Event;
 use crate::speech::{Speech, Heading, Direction, Inline};
 
@@ -6,6 +7,8 @@ pub struct HtmlRenderer {
     pub speech_class: &'static str,
     pub character_class: &'static str,
     pub direction_class: &'static str,
+    pub heading_anchor_class: &'static str,
+    pub heading_id_counter: RefCell<usize>,
     pub replace_softbreak: Option<String>,
 }
 
@@ -15,6 +18,8 @@ impl Default for HtmlRenderer {
             speech_class: "speech",
             character_class: "character",
             direction_class: "direction",
+            heading_anchor_class: "header",
+            heading_id_counter: RefCell::new(0),
             replace_softbreak: Some(" ".to_owned()),
         }
     }
@@ -34,16 +39,29 @@ impl HtmlRenderer {
     }
 
     pub fn render_heading<'a>(&self, heading: Heading<'a>, events: &mut Vec<Event<'a>>) {
-        let h_start = "<h5>";
-        let span_start = format!("<span class=\"{}\">", self.character_class);
+        let mut counter = self.heading_id_counter.borrow_mut();
+
+        let h_start = format!(r#"<h5 id="D{id}">"#,
+            id = counter,
+        );
+        let a_start = format!(r##"<a class="{class}" href="#D{id}">"##,
+            class = self.heading_anchor_class,
+            id = counter,
+        );
+        let span_start = format!(r#"<span class="{}">"#, self.character_class);
         let span_end = "</span>";
+        let a_end = "</a>";
         let h_end = "</h5>";
 
+        *counter = *counter + 1;
+
         events.push(Event::Html(h_start.into()));
+        events.push(Event::Html(a_start.into()));
         events.push(Event::Html(span_start.into()));
         events.push(Event::Text(heading.character));
         events.push(Event::Html(span_end.into()));
         self.render_direction(heading.direction, false, events);
+        events.push(Event::Html(a_end.into()));
         events.push(Event::Html(h_end.into()));
     }
 
@@ -183,6 +201,7 @@ pub fn replace_softbreaks<'a>(inlines: &mut Vec<Inline<'a>>, s: Option<&String>)
 #[cfg(test)]
 mod test {
     use super::*;
+    use pretty_assertions::assert_eq;
     use pulldown_cmark::Tag;
 
     #[test]
@@ -230,10 +249,12 @@ mod test {
             direction: Direction::new(),
         };
         let expected = vec![
-            Event::Html("<h5>".into()),
-            Event::Html("<span class=\"character\">".into()),
+            Event::Html(r#"<h5 id="D0">"#.into()),
+            Event::Html(r##"<a class="header" href="#D0">"##.into()),
+            Event::Html(r#"<span class="character">"#.into()),
             Event::Text("A".into()),
             Event::Html("</span>".into()),
+            Event::Html("</a>".into()),
             Event::Html("</h5>".into()),
         ];
         let mut result = Vec::new();
@@ -248,13 +269,15 @@ mod test {
             direction: Direction(vec![Event::Text("running".into())]),
         };
         let expected = vec![
-            Event::Html("<h5>".into()),
-            Event::Html("<span class=\"character\">".into()),
+            Event::Html(r#"<h5 id="D0">"#.into()),
+            Event::Html(r##"<a class="header" href="#D0">"##.into()),
+            Event::Html(r#"<span class="character">"#.into()),
             Event::Text("A".into()),
             Event::Html("</span>".into()),
-            Event::Html("<span class=\"direction\">".into()),
+            Event::Html(r#"<span class="direction">"#.into()),
             Event::Text("running".into()),
             Event::Html("</span>".into()),
+            Event::Html("</a>".into()),
             Event::Html("</h5>".into()),
         ];
         let mut result = Vec::new();
