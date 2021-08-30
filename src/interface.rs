@@ -144,6 +144,10 @@ where
         }
     }
 
+    pub fn renderer_mut(&mut self) -> &mut HtmlRenderer {
+        &mut self.renderer
+    }
+
     pub fn into_inner(self) -> I {
         self.iter.unwrap()
     }
