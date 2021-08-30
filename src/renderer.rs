@@ -3,8 +3,79 @@ use pulldown_cmark::Event;
 use crate::speech::{Speech, Heading, Direction, Inline};
 
 #[derive(Debug)]
+pub struct HtmlClasses {
+    classes: Vec<String>,
+    rendered: String,
+}
+
+#[inline]
+fn make_classes_rendered(classes: &[String]) -> String {
+    classes.join(" ")
+}
+
+fn encode_to_html_class(s: &str) -> String {
+    let mut encoded = String::new();
+
+    for c in s.chars() {
+        if c.is_ascii_alphanumeric() {
+            encoded.push(c);
+        } else {
+            let mut buf = [0; 4];
+            let results = c.encode_utf8(&mut buf);
+
+            encoded.push('%');
+            for index in 0..results.len() {
+                encoded += &format!("{:02x}", buf[index]);
+            }
+        }
+    }
+
+    encoded
+}
+
+impl HtmlClasses {
+    pub fn new() -> Self {
+        HtmlClasses {
+            classes: Vec::new(),
+            rendered: String::new(),
+        }
+    }
+
+    pub fn as_str(&self) -> &str {
+        self.rendered.as_str()
+    }
+
+    fn add_inner(&mut self, s: &str) {
+        self.classes.push(encode_to_html_class(s));
+    }
+
+    pub fn add(&mut self, s: &str) {
+        self.add_inner(s);
+        self.render();
+    }
+
+    fn render(&mut self) {
+        self.rendered = make_classes_rendered(&self.classes);
+    }
+}
+
+impl From<&[&str]> for HtmlClasses {
+    fn from(s: &[&str]) -> HtmlClasses {
+        let mut classes = HtmlClasses::new();
+        
+        for class in s.iter() {
+            classes.add_inner(class);
+        }
+
+        classes.render();
+
+        classes
+    }
+}
+
+#[derive(Debug)]
 pub struct HtmlRenderer {
-    pub speech_class: &'static str,
+    pub speech_classes: HtmlClasses,
     pub character_class: &'static str,
     pub direction_class: &'static str,
     pub heading_anchor_class: &'static str,
@@ -14,8 +85,9 @@ pub struct HtmlRenderer {
 
 impl Default for HtmlRenderer {
     fn default() -> Self {
+        let classes = ["speech"];
         Self {
-            speech_class: "speech",
+            speech_classes: HtmlClasses::from(&classes[..]),
             character_class: "character",
             direction_class: "direction",
             heading_anchor_class: "header",
@@ -27,7 +99,7 @@ impl Default for HtmlRenderer {
 
 impl HtmlRenderer {
     pub fn render_speech<'a>(&self, speech: Speech<'a>, events: &mut Vec<Event<'a>>) {
-        let div_start = format!("<div class=\"{}\">", self.speech_class);
+        let div_start = format!("<div class=\"{}\">", self.speech_classes.as_str());
         let div_end = "</div>";
         
         events.push(Event::Html(div_start.into()));
@@ -203,6 +275,23 @@ mod test {
     use super::*;
     use pretty_assertions::assert_eq;
     use pulldown_cmark::Tag;
+
+    #[test]
+    fn encode_html_class_with_puncts() {
+        let s = "class/name foo.txt";
+        let expected = "class%2fname%20foo%2etxt";
+        let result = encode_to_html_class(s);
+        assert_eq!(&result, expected);
+    }
+
+    #[test]
+    fn multiple_html_classes() {
+        let array = ["main", "c1/s1.md"];
+        let classes = HtmlClasses::from(&array[..]);
+        let expected = "main c1%2fs1%2emd";
+        let result = classes.as_str();
+        assert_eq!(result, expected);
+    }
 
     #[test]
     fn render_direction_to_html() {
