@@ -119,6 +119,12 @@ impl HtmlRenderer {
         self.render_speech_end(events);
     }
 
+    pub fn render_monologue<'a>(&self, body: Vec<Inline<'a>>, events: &mut Vec<Event<'a>>) {
+        self.render_speech_begin(events);
+        self.render_body(body, events);
+        self.render_speech_end(events);
+    }
+
     pub fn render_heading<'a>(&self, heading: Heading<'a>, events: &mut Vec<Event<'a>>) {
         let mut counter = self.heading_id_counter.borrow_mut();
 
