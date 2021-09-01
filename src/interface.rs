@@ -200,8 +200,8 @@ where
             Err(para) if self.mode.is_monologue() => {
                 let monologue = parse_body(para);
                 let mut html = Vec::new();
-                self.renderer.render_body(monologue, &mut html);
-                self.append_events(wrap_by_div_speech(html));
+                self.renderer.render_monologue(monologue, &mut html);
+                self.append_events(html);
             },
             Err(para) => {
                 let mut output = Vec::new();
@@ -266,14 +266,6 @@ fn wrap_by_paragraph_tag<'a>(events: Vec<Event<'a>>) -> Vec<Event<'a>> {
         events,
         Event::Start(Tag::Paragraph),
         Event::End(Tag::Paragraph),
-    )
-}
-
-fn wrap_by_div_speech<'a>(events: Vec<Event<'a>>) -> Vec<Event<'a>> {
-    wrap_events_by(
-        events,
-        Event::Html("<div class=\"speech\">".into()),
-        Event::Html("</div>".into()),
     )
 }
 

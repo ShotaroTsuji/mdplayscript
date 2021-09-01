@@ -17,7 +17,7 @@ fn encode_to_html_class(s: &str) -> String {
     let mut encoded = String::new();
 
     for c in s.chars() {
-        if c.is_ascii_alphanumeric() {
+        if c.is_ascii_alphanumeric() || c == '-' {
             encoded.push(c);
         } else {
             let mut buf = [0; 4];
@@ -98,16 +98,31 @@ impl Default for HtmlRenderer {
 }
 
 impl HtmlRenderer {
-    pub fn render_speech<'a>(&self, speech: Speech<'a>, events: &mut Vec<Event<'a>>) {
+    fn render_speech_begin<'a>(&self, events: &mut Vec<Event<'a>>) {
         let div_start = format!("<div class=\"{}\">", self.speech_classes.as_str());
-        let div_end = "</div>";
         
         events.push(Event::Html(div_start.into()));
+    }
+
+    fn render_speech_end<'a>(&self, events: &mut Vec<Event<'a>>) {
+        let div_end = "</div>";
+
+        events.push(Event::Html(div_end.into()));
+    }
+
+    pub fn render_speech<'a>(&self, speech: Speech<'a>, events: &mut Vec<Event<'a>>) {
+        self.render_speech_begin(events);
 
         self.render_heading(speech.heading, events);
         self.render_body(speech.body, events);
 
-        events.push(Event::Html(div_end.into()));
+        self.render_speech_end(events);
+    }
+
+    pub fn render_monologue<'a>(&self, body: Vec<Inline<'a>>, events: &mut Vec<Event<'a>>) {
+        self.render_speech_begin(events);
+        self.render_body(body, events);
+        self.render_speech_end(events);
     }
 
     pub fn render_heading<'a>(&self, heading: Heading<'a>, events: &mut Vec<Event<'a>>) {
