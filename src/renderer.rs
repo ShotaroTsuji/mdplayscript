@@ -17,7 +17,7 @@ fn encode_to_html_class(s: &str) -> String {
     let mut encoded = String::new();
 
     for c in s.chars() {
-        if c.is_ascii_alphanumeric() {
+        if c.is_ascii_alphanumeric() || c == '-' {
             encoded.push(c);
         } else {
             let mut buf = [0; 4];
