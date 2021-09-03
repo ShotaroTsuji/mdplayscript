@@ -1,6 +1,6 @@
 [package]
 name = "mdplayscript"
-version = "0.5.0"
+version = "0.6.0"
 authors = ["Shotaro Tsuji <Shotaro.Tsuji@gmail.com>"]
 edition = "2018"
 license = "MIT"
@@ -17,7 +17,7 @@ pulldown-cmark = "0.8.0"
 pulldown-cmark-to-cmark = "6.0.0"
 eyre = "0.6.5"
 structopt = "0.3.21"
-mdbook = "0.4.6"
+mdbook = "0.4.10"
 serde_json = "1.0.59"
 rust-embed = { version = "5.9.0", features = ["interpolate-folder-path"] }
 
@@ -26,3 +26,4 @@ toml = "0.5.8"
 big_s = "1.0.2"
 log = "0.4.14"
 env_logger = "0.8.3"
+pretty_assertions = "0.7.2"

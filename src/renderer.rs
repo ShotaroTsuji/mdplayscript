@@ -1,49 +1,154 @@
+use std::cell::RefCell;
 use pulldown_cmark::Event;
 use crate::speech::{Speech, Heading, Direction, Inline};
 
 #[derive(Debug)]
+pub struct HtmlClasses {
+    classes: Vec<String>,
+    rendered: String,
+}
+
+#[inline]
+fn make_classes_rendered(classes: &[String]) -> String {
+    classes.join(" ")
+}
+
+fn encode_to_html_class(s: &str) -> String {
+    let mut encoded = String::new();
+
+    for c in s.chars() {
+        if c.is_ascii_alphanumeric() || c == '-' {
+            encoded.push(c);
+        } else {
+            let mut buf = [0; 4];
+            let results = c.encode_utf8(&mut buf);
+
+            encoded.push('%');
+            for index in 0..results.len() {
+                encoded += &format!("{:02x}", buf[index]);
+            }
+        }
+    }
+
+    encoded
+}
+
+impl HtmlClasses {
+    pub fn new() -> Self {
+        HtmlClasses {
+            classes: Vec::new(),
+            rendered: String::new(),
+        }
+    }
+
+    pub fn as_str(&self) -> &str {
+        self.rendered.as_str()
+    }
+
+    fn add_inner(&mut self, s: &str) {
+        self.classes.push(encode_to_html_class(s));
+    }
+
+    pub fn add(&mut self, s: &str) {
+        self.add_inner(s);
+        self.render();
+    }
+
+    fn render(&mut self) {
+        self.rendered = make_classes_rendered(&self.classes);
+    }
+}
+
+impl From<&[&str]> for HtmlClasses {
+    fn from(s: &[&str]) -> HtmlClasses {
+        let mut classes = HtmlClasses::new();
+        
+        for class in s.iter() {
+            classes.add_inner(class);
+        }
+
+        classes.render();
+
+        classes
+    }
+}
+
+#[derive(Debug)]
 pub struct HtmlRenderer {
-    pub speech_class: &'static str,
+    pub speech_classes: HtmlClasses,
     pub character_class: &'static str,
     pub direction_class: &'static str,
+    pub heading_anchor_class: &'static str,
+    pub heading_id_counter: RefCell<usize>,
     pub replace_softbreak: Option<String>,
 }
 
 impl Default for HtmlRenderer {
     fn default() -> Self {
+        let classes = ["speech"];
         Self {
-            speech_class: "speech",
+            speech_classes: HtmlClasses::from(&classes[..]),
             character_class: "character",
             direction_class: "direction",
+            heading_anchor_class: "header",
+            heading_id_counter: RefCell::new(0),
             replace_softbreak: Some(" ".to_owned()),
         }
     }
 }
 
 impl HtmlRenderer {
-    pub fn render_speech<'a>(&self, speech: Speech<'a>, events: &mut Vec<Event<'a>>) {
-        let div_start = format!("<div class=\"{}\">", self.speech_class);
-        let div_end = "</div>";
+    fn render_speech_begin<'a>(&self, events: &mut Vec<Event<'a>>) {
+        let div_start = format!("<div class=\"{}\">", self.speech_classes.as_str());
         
         events.push(Event::Html(div_start.into()));
+    }
 
-        self.render_heading(speech.heading, events);
-        self.render_body(speech.body, events);
+    fn render_speech_end<'a>(&self, events: &mut Vec<Event<'a>>) {
+        let div_end = "</div>";
 
         events.push(Event::Html(div_end.into()));
     }
 
+    pub fn render_speech<'a>(&self, speech: Speech<'a>, events: &mut Vec<Event<'a>>) {
+        self.render_speech_begin(events);
+
+        self.render_heading(speech.heading, events);
+        self.render_body(speech.body, events);
+
+        self.render_speech_end(events);
+    }
+
+    pub fn render_monologue<'a>(&self, body: Vec<Inline<'a>>, events: &mut Vec<Event<'a>>) {
+        self.render_speech_begin(events);
+        self.render_body(body, events);
+        self.render_speech_end(events);
+    }
+
     pub fn render_heading<'a>(&self, heading: Heading<'a>, events: &mut Vec<Event<'a>>) {
-        let h_start = "<h5>";
-        let span_start = format!("<span class=\"{}\">", self.character_class);
+        let mut counter = self.heading_id_counter.borrow_mut();
+
+        let h_start = format!(r#"<h5 id="D{id}">"#,
+            id = counter,
+        );
+        let a_start = format!(r##"<a class="{class}" href="#D{id}">"##,
+            class = self.heading_anchor_class,
+            id = counter,
+        );
+        let span_start = format!(r#"<span class="{}">"#, self.character_class);
         let span_end = "</span>";
+        let a_end = "</a>";
         let h_end = "</h5>";
 
+        *counter = *counter + 1;
+
         events.push(Event::Html(h_start.into()));
+        events.push(Event::Html(a_start.into()));
         events.push(Event::Html(span_start.into()));
         events.push(Event::Text(heading.character));
         events.push(Event::Html(span_end.into()));
         self.render_direction(heading.direction, false, events);
+        events.push(Event::Html(a_end.into()));
         events.push(Event::Html(h_end.into()));
     }
 
@@ -183,7 +288,25 @@ pub fn replace_softbreaks<'a>(inlines: &mut Vec<Inline<'a>>, s: Option<&String>)
 #[cfg(test)]
 mod test {
     use super::*;
+    use pretty_assertions::assert_eq;
     use pulldown_cmark::Tag;
+
+    #[test]
+    fn encode_html_class_with_puncts() {
+        let s = "class/name foo.txt";
+        let expected = "class%2fname%20foo%2etxt";
+        let result = encode_to_html_class(s);
+        assert_eq!(&result, expected);
+    }
+
+    #[test]
+    fn multiple_html_classes() {
+        let array = ["main", "c1/s1.md"];
+        let classes = HtmlClasses::from(&array[..]);
+        let expected = "main c1%2fs1%2emd";
+        let result = classes.as_str();
+        assert_eq!(result, expected);
+    }
 
     #[test]
     fn render_direction_to_html() {
@@ -230,10 +353,12 @@ mod test {
             direction: Direction::new(),
         };
         let expected = vec![
-            Event::Html("<h5>".into()),
-            Event::Html("<span class=\"character\">".into()),
+            Event::Html(r#"<h5 id="D0">"#.into()),
+            Event::Html(r##"<a class="header" href="#D0">"##.into()),
+            Event::Html(r#"<span class="character">"#.into()),
             Event::Text("A".into()),
             Event::Html("</span>".into()),
+            Event::Html("</a>".into()),
             Event::Html("</h5>".into()),
         ];
         let mut result = Vec::new();
@@ -248,13 +373,15 @@ mod test {
             direction: Direction(vec![Event::Text("running".into())]),
         };
         let expected = vec![
-            Event::Html("<h5>".into()),
-            Event::Html("<span class=\"character\">".into()),
+            Event::Html(r#"<h5 id="D0">"#.into()),
+            Event::Html(r##"<a class="header" href="#D0">"##.into()),
+            Event::Html(r#"<span class="character">"#.into()),
             Event::Text("A".into()),
             Event::Html("</span>".into()),
-            Event::Html("<span class=\"direction\">".into()),
+            Event::Html(r#"<span class="direction">"#.into()),
             Event::Text("running".into()),
             Event::Html("</span>".into()),
+            Event::Html("</a>".into()),
             Event::Html("</h5>".into()),
         ];
         let mut result = Vec::new();

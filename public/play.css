@@ -1,3 +1,7 @@
+:root {
+	font-size: 18pt;
+}
+
 body {
 	margin: auto;
 	max-width: 210mm;
@@ -14,9 +18,8 @@ div.authors p {
 
 div.play {
 	margin: auto;
-	padding-left: 4em;
-	padding-right: 2em;
-	max-width: 48rem;
+	padding: 2em;
+	width: 100%;
 }
 
 p {
@@ -26,6 +29,11 @@ p {
 
 h1, h2, h3, h4 {
 	text-align: center;
+}
+
+a.header {
+	color: black;
+	text-decoration: none;
 }
 
 span.character {
@@ -48,7 +56,7 @@ div.speech {
 div.speech > h5 {
 	font-style: normal;
 	font-weight: normal;
-	font-size: medium;
+	font-size: 16pt;
 	text-align: center;
 	line-height: 2;
 	margin: 0;

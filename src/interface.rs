@@ -144,8 +144,71 @@ where
         }
     }
 
+    pub fn renderer_mut(&mut self) -> &mut HtmlRenderer {
+        &mut self.renderer
+    }
+
     pub fn into_inner(self) -> I {
         self.iter.unwrap()
+    }
+
+    fn dispatch_directive(&mut self, s: &str) {
+        match parse_directive(&s) {
+            Some(Directive::MonologueBegin) => {
+                self.mode = Mode::Monologue;
+            },
+            Some(Directive::MonologueEnd) => {
+                self.mode = Mode::PlayScript;
+            },
+            Some(Directive::PlayScriptOn) => {
+                self.mode = Mode::PlayScript;
+            },
+            Some(Directive::PlayScriptOff) => {
+                self.mode = Mode::Nop;
+            },
+            Some(Directive::Title) => {
+                emit_title(&self.params, &mut self.queue);
+            },
+            Some(Directive::SubTitle) => {
+                emit_subtitle(&self.params, &mut self.queue);
+            },
+            Some(Directive::Authors) => {
+                emit_authors(&self.params, &mut self.queue);
+            },
+            Some(Directive::MakeTitle) => {
+                if let Some(make_title) = self.make_title.as_mut() {
+                    let cover = (make_title)(&self.params);
+                    self.queue.push_back(Event::Html(cover.into()));
+                }
+            },
+            None => {},
+        }
+    }
+
+    fn append_events(&mut self, events: Vec<Event<'a>>) {
+        self.queue.extend(events);
+    }
+
+    fn dispatch_speech(&mut self, speech: Vec<Event<'a>>) {
+        match parse_speech(speech) {
+            Ok(speech) => {
+                let mut html = Vec::new();
+                self.renderer.render_speech(speech, &mut html);
+                html.push(Event::SoftBreak);
+                self.append_events(html);
+            },
+            Err(para) if self.mode.is_monologue() => {
+                let monologue = parse_body(para);
+                let mut html = Vec::new();
+                self.renderer.render_monologue(monologue, &mut html);
+                self.append_events(html);
+            },
+            Err(para) => {
+                let mut output = Vec::new();
+                self.renderer.render_events(para, &mut output);
+                self.append_events(wrap_by_paragraph_tag(output));
+            },
+        };
     }
 }
 
@@ -164,67 +227,14 @@ where
 
         match iter.next() {
             Some(Event::Html(s)) => {
-                match parse_directive(&s) {
-                    Some(Directive::MonologueBegin) => {
-                        self.mode = Mode::Monologue;
-                    },
-                    Some(Directive::MonologueEnd) => {
-                        self.mode = Mode::PlayScript;
-                    },
-                    Some(Directive::PlayScriptOn) => {
-                        self.mode = Mode::PlayScript;
-                    },
-                    Some(Directive::PlayScriptOff) => {
-                        self.mode = Mode::Nop;
-                    },
-                    Some(Directive::Title) => {
-                        emit_title(&self.params, &mut self.queue);
-                    },
-                    Some(Directive::SubTitle) => {
-                        emit_subtitle(&self.params, &mut self.queue);
-                    },
-                    Some(Directive::Authors) => {
-                        emit_authors(&self.params, &mut self.queue);
-                    },
-                    Some(Directive::MakeTitle) => {
-                        if let Some(make_title) = self.make_title.as_mut() {
-                            let cover = (make_title)(&self.params);
-                            self.queue.push_back(Event::Html(cover.into()));
-                        }
-                    },
-                    None => {},
-                }
-
+                self.dispatch_directive(&s);
                 self.queue.push_back(Event::Html(s));
             },
             Some(Event::Start(Tag::Paragraph)) if !self.mode.is_off() => {
                 let mut speeches = Speeches::new(FuseOnParagraphEnd::new(iter));
 
                 while let Some(speech) = speeches.next() {
-                    let output = match parse_speech(speech) {
-                        Ok(speech) => {
-                            let mut html = Vec::new();
-                            self.renderer.render_speech(speech, &mut html);
-                            html.push(Event::SoftBreak);
-
-                            html
-                        },
-                        Err(para) => {
-                            if self.mode.is_monologue() {
-                                let monologue = parse_body(para);
-                                let mut html = Vec::new();
-                                self.renderer.render_body(monologue, &mut html);
-                                wrap_by_div_speech(html)
-                            } else {
-                                let mut output = Vec::new();
-                                self.renderer.render_events(para, &mut output);
-                                wrap_by_paragraph_tag(output)
-                            }
-                        },
-                    };
-                    for ev in output.into_iter() {
-                        self.queue.push_back(ev);
-                    }
+                    self.dispatch_speech(speech);
                 }
 
                 iter = speeches.into_inner().into_inner();
@@ -256,14 +266,6 @@ fn wrap_by_paragraph_tag<'a>(events: Vec<Event<'a>>) -> Vec<Event<'a>> {
         events,
         Event::Start(Tag::Paragraph),
         Event::End(Tag::Paragraph),
-    )
-}
-
-fn wrap_by_div_speech<'a>(events: Vec<Event<'a>>) -> Vec<Event<'a>> {
-    wrap_events_by(
-        events,
-        Event::Html("<div class=\"speech\">".into()),
-        Event::Html("</div>".into()),
     )
 }
 
