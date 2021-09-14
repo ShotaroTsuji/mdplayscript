@@ -2,7 +2,7 @@ name: Rust
 
 on:
   push:
-    branches: [ develop ]
+    branches: [ develop, update-workflow ]
   pull_request:
     branches: [ master ]
 
@@ -16,6 +16,21 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+
+    - name: git-restore-mtime
+      uses: chetan/git-restore-mtime-action@v1.0
+
+    - name: Cache cargo objects
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db
+          target/
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
     - name: Build
       run: cargo build --verbose
     - name: Run tests
@@ -28,4 +43,4 @@ jobs:
     - name: Setup mdBook
       uses: peaceiris/actions-mdbook@v1
       with:
-        mdbook-version: '0.4.6'
+        mdbook-version: '0.4.10'
