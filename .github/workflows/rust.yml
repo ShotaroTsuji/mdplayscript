@@ -2,7 +2,7 @@ name: Rust
 
 on:
   push:
-    branches: [ develop ]
+    branches: [ develop, update-workflow ]
   pull_request:
     branches: [ master ]
 
