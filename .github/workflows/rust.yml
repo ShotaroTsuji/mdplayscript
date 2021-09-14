@@ -16,6 +16,10 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+
+    - name: git-restore-mtime
+      uses: chetan/git-restore-mtime-action@v1.0
+
     - name: Cache cargo objects
       uses: actions/cache@v2
       with:
@@ -26,6 +30,7 @@ jobs:
           ~/.cargo/git/db
           target/
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
     - name: Build
       run: cargo build --verbose
     - name: Run tests
